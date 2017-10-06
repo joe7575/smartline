@@ -16,3 +16,4 @@
 ]]--
 
 dofile(minetest.get_modpath("tubelib_addons2") .. "/timer.lua")
+dofile(minetest.get_modpath("tubelib_addons2") .. "/repeater.lua")

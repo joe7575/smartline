@@ -76,13 +76,12 @@ local function formspec(events, numbers, actions)
 		"field[2.3,6.2;2,1;n6;;"..numbers[6].."]" ..
 		"dropdown[4.5,6;3,1;a6;"..sAction..";"..tAction[actions[6]].."]".. 
 		
-		"button_exit[3,7;2,1;exit;OK]"
+		"button_exit[3,7;2,1;exit;close]"
 end
 
 
 local function check_rules(pos,elapsed)
 	local hour = math.floor(minetest.get_timeofday() * 24)
-	print(hour)
 	local meta = minetest.get_meta(pos)
 	local events = minetest.deserialize(meta:get_string("events"))
 	local numbers = minetest.deserialize(meta:get_string("numbers"))
@@ -138,6 +137,10 @@ minetest.register_node("tubelib_addons2:timer", {
 
 	on_receive_fields = function(pos, formname, fields, player)
 		local meta = minetest.get_meta(pos)
+		local placer_name = meta:get_string("placer_name")
+		if placer_name ~= player:get_player_name() then
+			return
+		end
 		
 		local events = minetest.deserialize(meta:get_string("events"))
 		for idx, evt in ipairs({fields.e1, fields.e2, fields.e3, fields.e4, fields.e5, fields.e6}) do
@@ -163,11 +166,9 @@ minetest.register_node("tubelib_addons2:timer", {
 		end
 		meta:set_string("actions", minetest.serialize(actions))
 	
-		if fields.exit ~= nil then
-			meta:set_string("formspec", formspec(events, numbers, actions))
-			local done = {false,false,false,false,false,false}
-			meta:set_string("done",  minetest.serialize(done))
-		end
+		meta:set_string("formspec", formspec(events, numbers, actions))
+		local done = {false,false,false,false,false,false}
+		meta:set_string("done",  minetest.serialize(done))
 	end,
 	
 	on_timer = check_rules,
