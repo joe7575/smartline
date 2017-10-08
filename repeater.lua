@@ -35,6 +35,7 @@ minetest.register_node("tubelib_addons2:repeater", {
 		local own_number = tubelib.add_node(pos, "tubelib_addons2:repeater")
 		meta:set_string("own_number", own_number)
 		meta:set_string("formspec", formspec(meta))
+		meta:set_string("infotext", "Tubelib Repeater "..own_number..": not connected")
 		meta:set_string("owner", placer:get_player_name())
 		meta:set_int("overload_cnt", 0)
 		minetest.get_node_timer(pos):start(1)
@@ -86,12 +87,17 @@ tubelib.register_node("tubelib_addons2:repeater", {}, {
 		local numbers = meta:get_string("numbers")
 		local overload_cnt = meta:get_int("overload_cnt") + 1
 		meta:set_int("overload_cnt", overload_cnt)
-		print("repeater", overload_cnt, topic)
 		if overload_cnt > OVER_LOAD_MAX then
 			local own_number = meta:get_string("own_number")
 			meta:set_string("infotext", "Tubelib Repeater "..own_number..": fault (overloaded)")
 			minetest.get_node_timer(pos):stop()
 			return false
+		elseif topic == "set_numbers" then
+			local own_number = meta:get_string("own_number")
+			meta:set_string("infotext", "Tubelib Repeater "..own_number..": connected with "..payload)
+			meta:set_string("numbers", payload)
+			meta:set_string("formspec", formspec(meta))
+			return true
 		else
 			return tubelib.send_message(numbers, owner, nil, topic, payload)
 		end

@@ -94,7 +94,6 @@ local function check_rules(pos,elapsed)
 		if act ~= "" and numbers[idx] ~= "" then
 			local hr = (events[idx] - 1) * 2
 			if hour == hr and done[idx] == false then
-				print(idx, events[idx], numbers[idx], act)
 				tubelib.send_message(numbers[idx], placer_name, nil, act, nil)
 				done[idx] = true
 			end
