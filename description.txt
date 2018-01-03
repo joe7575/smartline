@@ -1,2 +1,2 @@
-Tubelib Extension with communication blocks
+Tubelib Smart Line with small and smart sensors, actors and controllers.
 

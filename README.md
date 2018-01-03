@@ -1,18 +1,18 @@
-# Tubelib Extension with Communication Blocks \[tubelib_addons2\]
+# Smart Line \[tubelib_smartline\]
 
-This extension provides Repeater, Timer, Controller, Mesecons Converter and others communication blocks.
+This tubelib extension provides small and smart sensors, actors and controllers.
 
 
-Browse on: ![GitHub](https://github.com/joe7575/tubelib_addons2)
+Browse on: ![GitHub](https://github.com/joe7575/tubelib_smartline)
 
-Download: ![GitHub](https://github.com/joe7575/tubelib_addons2/archive/master.zip)
+Download: ![GitHub](https://github.com/joe7575/tubelib_smartline/archive/master.zip)
 
 
 ## Dependencies
-tubelib, default  
+tubelib, tubelib_addons2, default  
 
 # License
-Copyright (C) 2017 Joachim Stolberg  
+Copyright (C) 2018 Joachim Stolberg  
 Code: Licensed under the GNU LGPL version 2.1 or later. See LICENSE.txt and http://www.gnu.org/licenses/lgpl-2.1.txt  
 Textures: CC0
 
