@@ -15,3 +15,5 @@
 
 dofile(minetest.get_modpath("tubelib_smartline") .. "/playerdetector.lua")
 dofile(minetest.get_modpath("tubelib_smartline") .. "/button.lua")
+dofile(minetest.get_modpath("tubelib_smartline") .. "/signaltower.lua")
+dofile(minetest.get_modpath("tubelib_smartline") .. "/display.lua")
