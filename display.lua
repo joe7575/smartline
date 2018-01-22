@@ -20,6 +20,7 @@ display_lib.register_display_entity("tubelib_smartline:entity")
 function display_update(pos, objref) 
 	local meta = minetest.get_meta(pos)
 	local text = meta:get_string("text") or ""
+	text = string.gsub(text, "|", " \n")
 	local texture = font_lib.make_multiline_texture(
 		"default", text,
 		120, 120, 9, "top", "#000")
@@ -55,6 +56,7 @@ minetest.register_node("tubelib_smartline:display", {
 		local meta = minetest.get_meta(pos)
 		meta:set_string("number", number)
 		meta:set_string("text", " \n \nMinetest\nTubelib Smart Tools\n \nDisplay\nNumber: "..number)
+		meta:set_int("startscreen", 1)
 		display_lib.update_entities(pos)
 	end,
 
@@ -77,12 +79,33 @@ minetest.register_craft({
 	},
 })
 
+local function add_row(meta, payload)
+	local text = meta:get_string("text")
+	local rows
+	if meta:get_int("startscreen") == 1 then
+		rows = {}
+		meta:set_int("startscreen", 0)
+	else
+		rows = string.split(text, "|")
+	end
+	if #rows > 8 then
+		table.remove(rows, 1)
+	end
+	table.insert(rows, payload)
+	text = table.concat(rows, "|")
+	meta:set_string("text", text)
+end
+
 tubelib.register_node("tubelib_smartline:display", {}, {
 	on_recv_message = function(pos, topic, payload)
 		local node = minetest.get_node(pos)
 		if topic == "text" then
 			local meta = minetest.get_meta(pos)
 			meta:set_string("text", payload)
+			display_lib.update_entities(pos)
+		elseif topic == "row" then
+			local meta = minetest.get_meta(pos)
+			add_row(meta, payload)
 			display_lib.update_entities(pos)
 		elseif topic == "clear" then
 			local meta = minetest.get_meta(pos)

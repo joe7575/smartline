@@ -17,9 +17,10 @@ local function switch_on(pos)
 	local node = minetest.get_node(pos)
 	node.name = "tubelib_smartline:playerdetector_active"
 	minetest.swap_node(pos, node)
+	local number = meta:get_string("number")
 	local numbers = meta:get_string("numbers")
 	local owner = meta:get_string("owner")
-	tubelib.send_message(numbers, owner, nil, "on", nil)
+	tubelib.send_message(numbers, owner, nil, "on", number)
 end
 
 local function switch_off(pos)
@@ -27,16 +28,16 @@ local function switch_off(pos)
 	local node = minetest.get_node(pos)
 	node.name = "tubelib_smartline:playerdetector"
 	minetest.swap_node(pos, node)
+	local number = meta:get_string("number")
 	local numbers = meta:get_string("numbers")
 	local owner = meta:get_string("owner")
-	tubelib.send_message(numbers, owner, nil, "off", nil)
+	tubelib.send_message(numbers, owner, nil, "off", number)
 end
 
 local function scan_for_player(pos)
-	print("scanning")
 	local meta = minetest.get_meta(pos)
 	local names = meta:get_string("names") or ""
-	for _, object in pairs(minetest.get_objects_inside_radius(pos, 3)) do
+	for _, object in pairs(minetest.get_objects_inside_radius(pos, 4)) do
 		if object:is_player() then
 			if names == "" then return true end
 			for _,name in ipairs(string.split(names, " ")) do
@@ -113,11 +114,13 @@ minetest.register_node("tubelib_smartline:playerdetector", {
 		},
 	},
 	after_place_node = function(pos, placer)
-		tubelib.add_node(pos, "tubelib_smartline:playerdetector")
+		local number = tubelib.add_node(pos, "tubelib_smartline:playerdetector")
 		local meta = minetest.get_meta(pos)
+		meta:set_string("number", number)
 		local numbers = meta:get_string("numbers") or ""
 		local names = meta:get_string("names") or ""
 		meta:set_string("formspec", formspec(numbers, names))
+		meta:set_string("infotext", "Tubelib Player Detector "..number)
 		meta:set_string("owner", placer:get_player_name())
 		minetest.get_node_timer(pos):start(1)
 	end,
@@ -202,7 +205,8 @@ tubelib.register_node("tubelib_smartline:playerdetector", {"tubelib_smartline:pl
 		if topic == "set_numbers" then
 			local meta = minetest.get_meta(pos)
 			meta:set_string("numbers", payload)
-			meta:set_string("formspec", formspec(payload))
+			local names = meta:get_string("names") or ""
+			meta:set_string("formspec", formspec(payload, names))
 			return true
 		end
 	end,
