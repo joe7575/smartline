@@ -85,9 +85,7 @@ local sConditions = "false,true,check flag,check input,check node state"
 local CondRunTimeHandlers = {
 	[COND_FALSE] = function(data, flags, inputs) return false end,
 	[COND_TRUE]  = function(data, flags, inputs) return true end,
-	[COND_FLAG]  = function(data, flags, inputs) 
-		print("flags", dump(flags))
-		return flags[data.flag] == data.bool end,
+	[COND_FLAG]  = function(data, flags, inputs) return flags[data.flag] == data.bool end,
 	[COND_INPUT] = function(data, flags, inputs) return inputs[data.number] == data.bool end,
 	[COND_STATE] = function(data, flags, inputs) 
 		return tubelib.send_request(data.number, nil, nil, "state", "") == data.state 
@@ -158,6 +156,38 @@ end
 --
 -- Formspec
 --
+
+-- formspec to input the label
+local function formspec_label(_postfix_, fs_data)
+	print(dump(fs_data))
+	local label = fs_data["label".._postfix_] or "<any text>"
+	return "size[6,4]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"field[0,0;0,0;_type_;;label]"..
+		"field[0,0;0,0;_postfix_;;".._postfix_.."]"..
+		"label[0.2,0.3;Label:]"..
+		"field[0.3,1.5;5,1;label;;"..label.."]"..
+		"button[4.5,3;1.5,1;exit;ok]"
+end
+
+-- evaluate the row label
+local function eval_formspec_label(meta, fs_data, fields)
+	print("label", dump(fields))
+	fs_data["subm"..fields._postfix_.."_label"] = fields.label
+	if fields.exit == nil then
+		meta:set_string("formspec", formspec_label(fields._postfix_, fs_data))
+	end
+	return fs_data
+end
+
+-- set the button label of the main menu based on the given input in the submenu
+local function set_label_label(fs_data, fields)
+	fs_data["label"..fields._postfix_] = fs_data["subm"..fields._postfix_.."_label"]
+	return fs_data
+end
+
 
 -- formspec to input the row condition
 local function formspec_cond(_postfix_, fs_data)
@@ -415,14 +445,14 @@ local function formspec_main(state, fs_data)
 		default.gui_bg_img..
 		default.gui_slots..
 		"field[0,0;0,0;_type_;;main]"..
-		"label[0.3,0;label:]Label[3.3,0;IF  cond 1:]label[6,0;and/or]label[7.3,0;cond 2:]label[10.2,0;THEN  action:]"}
+		"label[0.3,0;label:]label[3.3,0;IF  cond 1:]label[6,0;and/or]label[7.3,0;cond 2:]label[10.2,0;THEN  action:]"}
 		
 	for idx = 1,NUM_RULES do
-		tbl[#tbl+1] = "field[0.3,"..  (-0.1+idx)..";2.9,0.8;label;;"..(fs_data["label" ..idx] or "<any text>").."]"
-		tbl[#tbl+1] = "button[3,"..  (-0.5+idx)..";2.9,1;cond1"..idx..";" ..(fs_data["cond1"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[6,"..(-0.5+idx)..";1,1;oprnd"..  idx..";" ..(fs_data["oprnd"..idx] or "or").."]"
-		tbl[#tbl+1] = "button[7,"..  (-0.5+idx)..";2.9,1;cond2"..idx..";" ..(fs_data["cond2"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[10,"..(-0.5+idx)..";2.9,1;actna"..   idx..";" ..(fs_data["actna" ..idx] or "...").."]"
+		tbl[#tbl+1] = "button[0,".. (-0.5+idx)..";2.9,1;label"..idx..";"..(fs_data["label"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[3,".. (-0.5+idx)..";2.9,1;cond1"..idx..";"..(fs_data["cond1"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[6,".. (-0.5+idx)..";1,1;oprnd"..  idx..";"..(fs_data["oprnd"..idx] or "or").."]"
+		tbl[#tbl+1] = "button[7,".. (-0.5+idx)..";2.9,1;cond2"..idx..";"..(fs_data["cond2"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[10,"..(-0.5+idx)..";2.9,1;actna"..idx..";"..(fs_data["actna"..idx] or "...").."]"
 	end
 	tbl[#tbl+1] = "image_button[12,9;1,1;".. tubelib.state_button(state) ..";button;]"
 	tbl[#tbl+1] = "button[10,9;1.5,1;help;help]"
@@ -433,13 +463,15 @@ end
 
 local function eval_formspec_main(meta, fs_data, fields)
 	--print("main", dump(fields))
+	print(dump(fields))
 	for idx = 1,NUM_RULES do
 		-- eval standard inputs
-		fs_data["label"..idx] = fields["label"..idx] or fs_data["label"..idx]
 		fs_data["oprnd"..idx] = fields["oprnd"..idx] or fs_data["oprnd"..idx]
 		
 		-- eval submenu button events
-		if fields["cond1"..idx] then
+		if fields["label"..idx] then
+			meta:set_string("formspec", formspec_label(idx, fs_data))
+		elseif fields["cond1"..idx] then
 			meta:set_string("formspec", formspec_cond("1"..idx, fs_data))
 		elseif fields["cond2"..idx] then
 			meta:set_string("formspec", formspec_cond("2"..idx, fs_data))
@@ -573,6 +605,9 @@ local function 	on_receive_fields(pos, formname, fields, player)
 	local fs_data = minetest.deserialize(meta:get_string("fs_data")) or {}
 	if fields._type_ == "main" then
 		fs_data = eval_formspec_main(meta, fs_data, fields)
+	elseif fields._type_ == "label" then
+		fs_data = eval_formspec_label(meta, fs_data, fields)
+		fs_data = set_label_label(fs_data, fields)
 	elseif fields._type_ == "cond" then
 		fs_data = eval_formspec_cond(meta, fs_data, fields)
 		fs_data = set_cond_label(fs_data, fields)
