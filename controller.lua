@@ -65,44 +65,221 @@ end
 --
 -- Conditions
 --
-local RegisteredConditions = {}
-local RegisteredActions = {}
 
-local ConditionTypes = {}
-local ActionTypes = {}
+-- tables with all data from condition/action registrations
+local kvRegisteredConditions = {}
+local kvRegisteredActions = {}
 
+-- lookup table to get the key behind the textlist index
+local aConditionTypes = {}
+local aActionTypes = {}
+
+-- table with runtime functions
 local CondRunTimeHandlers = {}
 local ActnRunTimeHandlers = {}
 
-local function eval_cond(cond, data, flags, timers, inputs)
-	return CondRunTimeHandlers[cond](data, flags, timers, inputs) and 1 or 0
+
+local function eval_cond(data, flags, timers, inputs)
+	return CondRunTimeHandlers[data.__idx__](data, flags, timers, inputs) and 1 or 0
 end
 
-local function exec_action(actn, data, flags, number)
-	ActnRunTimeHandlers[actn](data, flags, number)
+local function exec_action(data, flags, number)
+	ActnRunTimeHandlers[data.__idx__](data, flags, number)
 end
 
 tubelib_smartline = {}
 
+--
+-- API functions for condition/action registrations
+--
 function tubelib_smartline.register_condition(name, tData)
 	table.insert(CondRunTimeHandlers, tData.on_execute)
-	table.insert(ConditionTypes, name)
-	tData.__idx__ = #ConditionTypes
-	RegisteredConditions[name] = tData
+	table.insert(aConditionTypes, name)
+	tData.__idx__ = #aConditionTypes
+	kvRegisteredConditions[name] = tData
 end
 
 function tubelib_smartline.register_action(name, tData)
 	table.insert(ActnRunTimeHandlers, tData.on_execute)
-	table.insert(ActionTypes, name)
-	tData.__idx__ = #ActionTypes
-	RegisteredActions[name] = tData
+	table.insert(aActionTypes, name)
+	tData.__idx__ = #aActionTypes
+	kvRegisteredActions[name] = tData
 end
+
 
 --
 -- Formspec
 --
 
--- formspec to input the label
+-- Determine the selected submenu and return the corresponding
+-- formspec definition.
+-- postfix: row/culum info like "11" or "a2"
+-- type: "cond" or "actn"
+-- fs_data: formspec data
+
+local function get_active_subm_definition(postfix, type, fs_data)
+	local idx = 1
+	local fs_definition = {}
+	if type == "cond" then
+		idx = fs_data["subm"..postfix.."_cond"] or 1
+		local key = aConditionTypes[idx]
+		fs_definition = kvRegisteredConditions[key]
+	elseif type == "actn" then
+		idx = fs_data["subm"..postfix.."_actn"] or 1
+		local key = aActionTypes[idx]
+		fs_definition = kvRegisteredActions[key]
+	end
+	return idx, fs_definition
+end
+
+-- Extract runtime relevant data from the given submenu 
+-- postfix: row/culum info like "11" or "a2"
+-- fs_definition: submenu formspec definition
+-- fs_data: formspec data
+local function get_subm_data(postfix, fs_definition, fs_data)
+	local data = {}
+	for idx,elem in ipairs(fs_definition.formspec) do
+		if elem.type == "field" then	
+			data[elem.name] = fs_data["subm"..postfix.."_"..elem.name] or "?"
+		elseif elem.type == "textlist" then	
+			data[elem.name] = fs_data["subm"..postfix.."_"..elem.name] or 1
+		end
+	end
+	-- type of the condition/action
+	data.__idx__ = fs_definition.__idx__
+	return data
+end
+
+-- Copy field/formspec data to the table fs_data
+-- fs_definition: submenu formspec definituion
+-- fields: formspec input
+-- fs_data: formspec data
+local function field2fs_data(fs_definition, fields, fs_data)
+	for idx,elem in ipairs(fs_definition.formspec) do
+		if elem.type == "field" then	
+			if fields[elem.name] then
+				fs_data["subm"..fields._postfix_.."_"..elem.name] = fields[elem.name]
+			end
+		elseif elem.type == "textlist" then	
+			local evt = minetest.explode_textlist_event(fields[elem.name])
+			if evt.type == "CHG" then
+				fs_data["subm"..fields._postfix_.."_"..elem.name] = evt.index
+			end
+		end
+	end
+	return fs_data
+end
+
+local function add_controls_to_table(tbl, postfix, fs_data, fs_definition)
+	local val = ""
+	local offs = 2.4
+	for idx,elem in ipairs(fs_definition.formspec) do
+		tbl[#tbl+1] = "label[0,"..offs..";"..elem.label..":]"
+		if elem.type == "field" then
+			val = fs_data["subm"..postfix.."_"..elem.name] or elem.default
+			tbl[#tbl+1] = "field[0.3,"..(offs+0.7)..";8.2,1;"..elem.name..";;"..val.."]"
+			offs = offs + 1.5
+		elseif elem.type == "textlist" then
+			val = fs_data["subm"..postfix.."_"..elem.name] or elem.default
+			tbl[#tbl+1] = "textlist[0.0,"..(offs+0.5)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
+			offs = offs + 2.4
+		end
+	end
+	return tbl
+end
+
+local function runtime_data(postfix, type, fs_data)
+	local _,fs_definition = get_active_subm_definition(postfix, type, fs_data)
+	return get_subm_data(postfix, fs_definition, fs_data)
+end
+
+--
+-- Condition formspec
+--
+local function formspec_cond(_postfix_, fs_data)
+	local tbl = {"size[8.2,10]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"field[0,0;0,0;_type_;;cond]"..
+		"field[0,0;0,0;_postfix_;;".._postfix_.."]"}
+	
+	local sConditions = table.concat(aConditionTypes, ",")
+	local cond_idx, fs_definition = get_active_subm_definition(_postfix_, "cond", fs_data)
+	tbl[#tbl+1] = "label[0,0.1;Condition type:]"
+	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;cond;"..sConditions..";"..cond_idx.."]"
+	tbl = add_controls_to_table(tbl, _postfix_, fs_data, fs_definition)
+	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
+	return table.concat(tbl)
+end
+
+-- evaluate the row condition
+local function eval_formspec_cond(meta, fs_data, fields)
+	-- determine condition type
+	local cond = minetest.explode_textlist_event(fields.cond)
+	if cond.type == "CHG" then
+		fs_data["subm"..fields._postfix_.."_cond"] = cond.index
+	end
+	-- prepare data
+	local _, fs_definition = get_active_subm_definition(fields._postfix_, "cond", fs_data)
+	fs_data = field2fs_data(fs_definition, fields, fs_data)
+	local data = get_subm_data(fields._postfix_, fs_definition, fs_data)
+	-- update button for main menu
+	fs_data["cond"..fields._postfix_] = fs_definition.button_label(data)
+	
+	if fields._exit_ == nil then
+		-- update formspec if exit is not pressed
+		meta:set_string("formspec", formspec_cond(fields._postfix_, fs_data))
+	end
+	return fs_data
+end
+	
+
+--
+-- Action formspec
+--
+local function formspec_actn(_postfix_, fs_data)
+	local tbl = {"size[8.2,10]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"field[0,0;0,0;_type_;;actn]"..
+		"field[0,0;0,0;_postfix_;;".._postfix_.."]"}
+	
+	local sActions = table.concat(aActionTypes, ",")
+	local actn_idx, fs_definition = get_active_subm_definition(_postfix_, "actn", fs_data)
+	tbl[#tbl+1] = "label[0,0.1;Action type:]"
+	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;actn;"..sActions..";"..actn_idx.."]"
+	tbl = add_controls_to_table(tbl, _postfix_, fs_data, fs_definition)
+	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
+	return table.concat(tbl)
+end
+
+-- evaluate the row action
+local function eval_formspec_actn(meta, fs_data, fields)
+	-- determine action type
+	local actn = minetest.explode_textlist_event(fields.actn)
+	if actn.type == "CHG" then
+		fs_data["subm"..fields._postfix_.."_actn"] = actn.index
+	end
+	-- prepare data
+	local _, fs_definition = get_active_subm_definition(fields._postfix_, "actn", fs_data)
+	fs_data = field2fs_data(fs_definition, fields, fs_data)
+	local data = get_subm_data(fields._postfix_, fs_definition, fs_data)
+	-- update button for main menu
+	fs_data["actn"..fields._postfix_] = fs_definition.button_label(data)
+	
+	if fields._exit_ == nil then
+		-- update formspec if exit is not pressed
+		meta:set_string("formspec", formspec_actn(fields._postfix_, fs_data))
+	end
+	return fs_data
+end
+
+
+--
+-- Label text formspec
+--
 local function formspec_label(_postfix_, fs_data)
 	--print(dump(fs_data))
 	local label = fs_data["label".._postfix_] or "<any text>"
@@ -130,84 +307,9 @@ local function eval_formspec_label(meta, fs_data, fields)
 end
 
 
--- formspec to input the row condition
-local function formspec_cond(_postfix_, fs_data)
-	local sConditions = table.concat(ConditionTypes, ",")
-	local cond = fs_data["subm".._postfix_.."_cond"] or 1
-	local tbl = {"size[8.2,10]"..
-		default.gui_bg..
-		default.gui_bg_img..
-		default.gui_slots..
-		"field[0,0;0,0;_type_;;cond]"..
-		"field[0,0;0,0;_postfix_;;".._postfix_.."]"..
-		"label[0,0.1;Condition type:]"..
-		"textlist[0,0.6;8,1.4;cond;"..sConditions..";"..cond.."]"}
-	
-	local key = ConditionTypes[cond]
-	local item = RegisteredConditions[key]
-	--print("formspec_cond", cond, "key", key, "item", dump(item))
-	local val = ""
-	local offs = 2.4
-	for idx,elem in ipairs(item.formspec) do
-		tbl[#tbl+1] = "label[0,"..offs..";"..elem.label..":]"
-		if elem.type == "field" then
-			val = fs_data["subm".._postfix_.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "field[0.3,"..(offs+0.7)..";8.2,1;"..elem.name..";;"..val.."]"
-			offs = offs + 1.5
-		elseif elem.type == "textlist" then
-			val = fs_data["subm".._postfix_.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "textlist[0.0,"..(offs+0.5)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
-			offs = offs + 2.4
-		end
-	end
-	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
-	--print("table.concat(tbl)", table.concat(tbl, "\n"))
-	return table.concat(tbl)
-end
-
--- evaluate the row condition
-local function eval_formspec_cond(meta, fs_data, fields)
-	-- determine condition type
-	local cond = minetest.explode_textlist_event(fields.cond)
-	if cond.type == "CHG" then
-		fs_data["subm"..fields._postfix_.."_cond"] = cond.index
-	end
-	--fs_data["subm"..fields._postfix_.."_cond"] = fs_data["subm"..fields._postfix_.."_cond"] or 1
-	cond = fs_data["subm"..fields._postfix_.."_cond"]
-	local key = ConditionTypes[cond]
-	-- read condition type dependent data set
-	local item = RegisteredConditions[key]
-	--print("eval_formspec_cond", cond, "key", key, "fields", dump(fields), "item", dump(item))
-	local data = {}
-	-- evaluate user input
-	for idx,elem in ipairs(item.formspec) do
-		if elem.type == "field" then	
-			if fields[elem.name] then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = fields[elem.name]
-			end
-			-- prepare data for button label generation
-			data[elem.name] = fs_data["subm"..fields._postfix_.."_"..elem.name] or "?"
-		elseif elem.type == "textlist" then	
-			local evt = minetest.explode_textlist_event(fields[elem.name])
-			if evt.type == "CHG" then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = evt.index
-			end
-			-- prepare data for button label generation
-			data[elem.name] = fs_data["subm"..fields._postfix_.."_"..elem.name] or 1
-		end
-	end
-	-- update button for main menu
-	print("data", dump(data))
-	fs_data["cond"..fields._postfix_] = item.button_label(data)
-	if fields._exit_ == nil then
-		-- update formspec if exit is not pressed
-		meta:set_string("formspec", formspec_cond(fields._postfix_, fs_data))
-	end
-	return fs_data
-end
-	
-
--- formspec to input the operand
+--
+-- Operand formspec
+--
 local function formspec_oprnd(_postfix_, fs_data)
 	local oprnd = fs_data["subm".._postfix_.."_oprnd"] or ""
 	return "size[6,4]"..
@@ -235,84 +337,6 @@ local function eval_formspec_oprnd(meta, fs_data, fields)
 	fs_data["oprnd"..fields._postfix_] = fs_data["subm"..fields._postfix_.."_oprnd"] == 1 and "or" or "and"
 	return fs_data
 end
-
--- formspec to input the row action
-local function formspec_actn(_postfix_, fs_data)
-	local sActions = table.concat(ActionTypes, ",")
-	local actn = fs_data["subm".._postfix_.."_actn"] or 1
-	local tbl = {"size[8.2,10]"..
-		default.gui_bg..
-		default.gui_bg_img..
-		default.gui_slots..
-		"field[0,0;0,0;_type_;;actn]"..
-		"field[0,0;0,0;_postfix_;;".._postfix_.."]"..
-		"label[0,0.1;Action type:]"..
-		"textlist[0,0.6;8,1.4;actn;"..sActions..";"..actn.."]"}
-	
-	local key = ActionTypes[actn]
-	local item = RegisteredActions[key]
-	local val = ""
-	local offs = 2.4
-	print("formspec_actn", actn, "key", key, "item", dump(item))
-	for idx,elem in ipairs(item.formspec) do
-		tbl[#tbl+1] = "label[0,"..offs..";"..elem.label..":]"
-		if elem.type == "field" then
-			val = fs_data["subm".._postfix_.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "field[0.3,"..(offs+0.7)..";8.2,1;"..elem.name..";;"..val.."]"
-			offs = offs + 1.5
-		elseif elem.type == "textlist" then
-			val = fs_data["subm".._postfix_.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "textlist[0.0,"..(offs+0.5)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
-			offs = offs + 2.4
-		end
-	end
-	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
-	--print("table.concat(tbl)", table.concat(tbl, "\n"))
-	return table.concat(tbl)
-end
-
--- evaluate the row action
-local function eval_formspec_actn(meta, fs_data, fields)
-	-- determine action type
-	local actn = minetest.explode_textlist_event(fields.actn)
-	if actn.type == "CHG" then
-		fs_data["subm"..fields._postfix_.."_actn"] = actn.index
-	end
-	--fs_data["subm"..fields._postfix_.."_actn"] = fs_data["subm"..fields._postfix_.."_actn"] or 1
-	actn = fs_data["subm"..fields._postfix_.."_actn"]
-	print("fs_data", dump(fs_data))
-	local key = ActionTypes[actn]
-	-- read action type dependent data set
-	local item = RegisteredActions[key]
-	print("eval_formspec_actn", actn, "key", key, "fields", dump(fields), "item", dump(item))
-	local data = {}
-	-- evaluate user input
-	for idx,elem in ipairs(item.formspec) do
-		if elem.type == "field" then	
-			if fields[elem.name] then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = fields[elem.name]
-			end
-			-- prepare data for button label generation
-			data[elem.name] = fs_data["subm"..fields._postfix_.."_"..elem.name] or "?"
-		elseif elem.type == "textlist" then	
-			local evt = minetest.explode_textlist_event(fields[elem.name])
-			if evt.type == "CHG" then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = evt.index
-			end
-			-- prepare data for button label generation
-			data[elem.name] = fs_data["subm"..fields._postfix_.."_"..elem.name] or 1
-		end
-	end
-	-- update button for main menu
-	print("data", dump(data))
-	fs_data["actn"..fields._postfix_] = item.button_label(data)
-	if fields._exit_ == nil then
-		-- update formspec if exit is not pressed
-		meta:set_string("formspec", formspec_actn(fields._postfix_, fs_data))
-	end
-	return fs_data
-end
-
 
 local function formspec_main(state, fs_data)
 	local tbl = {"size[13,10]"..
@@ -374,11 +398,12 @@ end
 local function execute(meta, number, debug)
 	--print("elapsed", elapsed)
 	local rt_rules = tubelib.get_data(number, "rt_rules")
-	local flags = tubelib.get_data(number, "flags")
 	local inputs = tubelib.get_data(number, "inputs")
 	local actions = tubelib.get_data(number, "actions")
+	local timers = tubelib.get_data(number, "timers")
+	local flags = {}
 	for i,item in ipairs(rt_rules) do
-		if eval_cond(item.cond1, flags, inputs) + eval_cond(item.cond2, flags, inputs) >= item.cond_cnt then
+		if eval_cond(item.cond1, flags, inputs, timers) + eval_cond(item.cond2, flags, inputs, timers) >= item.cond_cnt then
 			--print("exec rule", i)
 			if actions[i] == false then
 				-- execute action
@@ -391,7 +416,6 @@ local function execute(meta, number, debug)
 	end
 	tubelib.set_data(number, "rt_rules", rt_rules)
 	tubelib.set_data(number, "inputs", {})
-	tubelib.set_data(number, "flags", {0,0,0,0,0,0,0,0})
 	tubelib.set_data(number, "actions", actions)
 end
 
@@ -422,7 +446,7 @@ local function switch_state(pos, state, fs_data)
 end
 
 local function start_controller(pos, number, fs_data)
-	tubelib.set_data(number, "flags",  create_arr(0, NUM_RULES)) -- local storage
+	tubelib.set_data(number, "timers", create_arr(0, NUM_RULES)) -- local timers
 	tubelib.set_data(number, "inputs", create_arr(2, NUM_RULES)) -- for rx commands
 	tubelib.set_data(number, "actions", create_arr(false, NUM_RULES)) -- for action states
 	switch_state(pos, tubelib.RUNNING, fs_data)
@@ -432,41 +456,21 @@ local function stop_controller(pos, fs_data)
 	switch_state(pos, tubelib.STOPPED, fs_data)
 end
 
-local function formspec2runtime_rule(number, owner, fs_rules)
+local function formspec2runtime_rule(number, owner, fs_data)
 	local rt_rules = {}
 	local num2inp = {}
 	for idx = 1,NUM_RULES do
 		-- valid rule?
-		if fs_rules["subm1"..idx.."_cond"] and fs_rules["subm2"..idx.."_cond"] 
-		and fs_rules["subma"..idx.."_actn"] then
+		if fs_data["subm1"..idx.."_cond"] and fs_data["subm2"..idx.."_cond"] 
+		and fs_data["subma"..idx.."_actn"] then
 			-- add to list of runtine rules
 			local rule = {
-				cond_cnt = fs_rules["oprnd"..idx] == "and" and 2 or 1,
-				cond1 = {
-					cond = fs_rules["subm1"..idx.."_cond"],
-					number = fs_rules["subm1"..idx.."_number"],
-					flag = fs_rules["subm1"..idx.."_flag"],
-					bool = fs_rules["subm1"..idx.."_bool"] == 1 and 1 or 0,
-					state = tRX_STATES[fs_rules["subm1"..idx.."_state"]],
-				},
-				cond2 = {
-					cond = fs_rules["subm2"..idx.."_cond"],
-					number = fs_rules["subm2"..idx.."_number"],
-					flag = fs_rules["subm2"..idx.."_flag"],
-					bool = fs_rules["subm2"..idx.."_bool"] == 1 and 1 or 0,
-					state = tRX_STATES[fs_rules["subm2"..idx.."_state"]],
-				},
-				actn = {
-					actn = fs_rules["subma"..idx.."_actn"],
-					number = fs_rules["subma"..idx.."_number"],
-					flag = fs_rules["subma"..idx.."_flag"],
-					row = fs_rules["subma"..idx.."_row"],
-					text = fs_rules["subma"..idx.."_text"],
-					color = tCOLORS[fs_rules["subma"..idx.."_color"]],
-					bool = fs_rules["subma"..idx.."_bool"] == 1 and 1 or 0,
-					owner = owner,
-				},
+				cond_cnt = fs_data["oprnd"..idx] == "and" and 2 or 1,
+				cond1 = runtime_data("1"..idx, "cond", fs_data),
+				cond2 = runtime_data("2"..idx, "cond", fs_data),
+				actn  = runtime_data("a"..idx, "actn", fs_data),
 			}
+			rule.actn.owner = owner
 			table.insert(rt_rules, rule)
 		end
 	end 
