@@ -1,7 +1,7 @@
 --[[
 
-	Tubelib Smart Line
-	==================
+	SmartLine
+	=========
 
 	Copyright (C) 2018 Joachim Stolberg
 
@@ -14,21 +14,21 @@
 
 
 local function switch_on(pos, node, color)
-	node.name = "tubelib_smartline:signaltower_"..color
+	node.name = "smartline:signaltower_"..color
 	minetest.swap_node(pos, node)
 end	
 
 local function switch_off(pos, node)
-	node.name = "tubelib_smartline:signaltower"
+	node.name = "smartline:signaltower"
 	minetest.swap_node(pos, node)
 end	
 
-minetest.register_node("tubelib_smartline:signaltower", {
-	description = "Tubelib Signal Tower",
+minetest.register_node("smartline:signaltower", {
+	description = "SmartLine Signal Tower",
 	tiles = {
-		'tubelib_smartline_signaltower_top.png',
-		'tubelib_smartline_signaltower_top.png',
-		'tubelib_smartline_signaltower.png',
+		'smartline_signaltower_top.png',
+		'smartline_signaltower_top.png',
+		'smartline_signaltower.png',
 	},
 
 	drawtype = "nodebox",
@@ -40,9 +40,9 @@ minetest.register_node("tubelib_smartline:signaltower", {
 	},
 	
 	after_place_node = function(pos, placer)
-		local number = tubelib.add_node(pos, "tubelib_smartline:signaltower")
+		local number = tubelib.add_node(pos, "smartline:signaltower")
 		local meta = minetest.get_meta(pos)
-		meta:set_string("infotext", "Tubelib Signal Tower "..number)
+		meta:set_string("infotext", "SmartLine Signal Tower "..number)
 	end,
 
 	on_rightclick = function(pos, node, clicker)
@@ -65,12 +65,12 @@ minetest.register_node("tubelib_smartline:signaltower", {
 })
 
 for _,color in ipairs({"green", "amber", "red"}) do
-	minetest.register_node("tubelib_smartline:signaltower_"..color, {
-		description = "Tubelib Signal Tower",
+	minetest.register_node("smartline:signaltower_"..color, {
+		description = "SmartLine Signal Tower",
 		tiles = {
-			'tubelib_smartline_signaltower_top.png',
-			'tubelib_smartline_signaltower_top.png',
-			'tubelib_smartline_signaltower_'..color..'.png',
+			'smartline_signaltower_top.png',
+			'smartline_signaltower_top.png',
+			'smartline_signaltower_'..color..'.png',
 		},
 
 		drawtype = "nodebox",
@@ -93,23 +93,23 @@ for _,color in ipairs({"green", "amber", "red"}) do
 		groups = {crumbly=0, not_in_creative_inventory=1},
 		is_ground_content = false,
 		sounds = default.node_sound_glass_defaults(),
-		drop = "tubelib_smartline:signaltower",
+		drop = "smartline:signaltower",
 	})
 end
 
 minetest.register_craft({
-	output = "tubelib_smartline:signaltower",
+	output = "smartline:signaltower",
 	recipe = {
-		{"dye:red",    "", ""},
+		{"dye:red",    "default:copper_ingot", ""},
 		{"dye:orange", "default:glass", ""},
 		{"dye:green",  "tubelib_addons2:wlanchip", ""},
 	},
 })
 
-tubelib.register_node("tubelib_smartline:signaltower", {
-	"tubelib_smartline:signaltower_green", 
-	"tubelib_smartline:signaltower_amber", 
-	"tubelib_smartline:signaltower_red"}, {
+tubelib.register_node("smartline:signaltower", {
+	"smartline:signaltower_green", 
+	"smartline:signaltower_amber", 
+	"smartline:signaltower_red"}, {
 	on_recv_message = function(pos, topic, payload)
 		local node = minetest.get_node(pos)
 		if topic == "green" then

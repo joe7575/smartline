@@ -1,7 +1,7 @@
 --[[
 
-	Tubelib Smart Line
-	==================
+	SmartLine
+	=========
 
 	Copyright (C) 2018 Joachim Stolberg
 
@@ -9,13 +9,13 @@
 	See LICENSE.txt for more information
 
 	button.lua:
-	Derived from tubelib button
+	Derived from Tubelib button
 
 ]]--
 
 
 local function switch_on(pos, node)
-	node.name = "tubelib_smartline:button_active"
+	node.name = "smartline:button_active"
 	minetest.swap_node(pos, node)
 	minetest.sound_play("button", {
 			pos = pos,
@@ -23,7 +23,8 @@ local function switch_on(pos, node)
 			max_hear_distance = 5,
 		})
 	local meta = minetest.get_meta(pos)
-	local number = meta:get_string("number")
+	local own_num = meta:get_string("own_num")
+	local numbers = meta:get_string("numbers")
 	local cycle_time = meta:get_int("cycle_time")
 	if cycle_time > 0 then 	-- button mode?
 		minetest.get_node_timer(pos):start(cycle_time)
@@ -33,12 +34,12 @@ local function switch_on(pos, node)
 	if meta:get_string("public") == "false" then
 		clicker_name = meta:get_string("clicker_name")
 	end
-	tubelib.send_message(number, placer_name, clicker_name, "on", nil)  -- <<=== tubelib
+	tubelib.send_message(numbers, placer_name, clicker_name, "on", own_num)
 end
 
 local function switch_off(pos)
 	local node = minetest.get_node(pos)
-	node.name = "tubelib_smartline:button"
+	node.name = "smartline:button"
 	minetest.swap_node(pos, node)
 	minetest.get_node_timer(pos):stop()
 	minetest.sound_play("button", {
@@ -47,23 +48,24 @@ local function switch_off(pos)
 			max_hear_distance = 5,
 		})
 	local meta = minetest.get_meta(pos)
-	local number = meta:get_string("number")
+	local own_num = meta:get_string("own_num")
+	local numbers = meta:get_string("numbers")
 	local placer_name = meta:get_string("placer_name")
-	tubelib.send_message(number, placer_name, nil, "off", nil)  -- <<=== tubelib
+	tubelib.send_message(numbers, placer_name, nil, "off", own_num)
 end
 
 
-minetest.register_node("tubelib_smartline:button", {
-	description = "Tubelib Button/Switch",
-	inventory_image = "tubelib_smartline_button_inventory.png",
+minetest.register_node("smartline:button", {
+	description = "SmartLine Button/Switch",
+	inventory_image = "smartline_button_inventory.png",
 	tiles = {
 		-- up, down, right, left, back, front
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png^tubelib_smartline_button_off.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png^smartline_button_off.png",
 	},
 
 	drawtype = "nodebox",
@@ -76,21 +78,25 @@ minetest.register_node("tubelib_smartline:button", {
 	
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
+		local own_num = tubelib.add_node(pos, "SmartLine:button")
+		meta:set_string("own_num", own_num)
 		meta:set_string("formspec", "size[5,6]"..
 		"dropdown[0.2,0;3;type;switch,button 2s,button 4s,button 8s,button 16s;1]".. 
-		"field[0.5,2;3,1;number;Insert destination block number;]" ..
+		"field[0.5,2;3,1;numbers;Insert destination block number(s);]" ..
 		"checkbox[1,3;public;public;false]"..
 		"button_exit[1,4;2,1;exit;Save]")
 		meta:set_string("placer_name", placer:get_player_name())
 		meta:set_string("public", "false")
 		meta:set_int("cycle_time", 0)
+		meta:set_string("infotext", "SmartLine Button "..own_num)
 	end,
 
 	on_receive_fields = function(pos, formname, fields, player)
 		local meta = minetest.get_meta(pos)
-		if tubelib.check_numbers(fields.number) then  -- <<=== tubelib
-			meta:set_string("number", fields.number)
-			meta:set_string("infotext", "Tubelib Button, connected with block "..fields.number)
+		if tubelib.check_numbers(fields.numbers) then
+			meta:set_string("numbers", fields.numbers)
+			local own_num = meta:get_string("own_num")
+			meta:set_string("infotext", "SmartLine Button "..own_num..", connected with block "..fields.numbers)
 		else
 			return
 		end
@@ -132,16 +138,16 @@ minetest.register_node("tubelib_smartline:button", {
 })
 
 
-minetest.register_node("tubelib_smartline:button_active", {
-	description = "Tubelib Button/Switch",
+minetest.register_node("smartline:button_active", {
+	description = "SmartLine Button/Switch",
 	tiles = {
 		-- up, down, right, left, back, front
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png^tubelib_smartline_button_on.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png^smartline_button_on.png",
 	},
 
 	drawtype = "nodebox",
@@ -171,11 +177,24 @@ minetest.register_node("tubelib_smartline:button_active", {
 })
 
 minetest.register_craft({
-	output = "tubelib_smartline:button",
+	output = "smartline:button",
 	recipe = {
 		{"", "", ""},
-		{"group:wood", "dye:blue", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
 		{"", "", ""},
 	},
+})
+
+
+minetest.register_lbm({
+	label = "[SmartLine] button update",
+	name = "smartline:update",
+	nodenames = {"tubelib_smartline:button"},
+	run_at_every_load = true,
+	action = function(pos, node)
+		print("update tubelib_smartline:button")
+		node.name = "smartline:button"
+		minetest.swap_node(pos, node)
+	end
 })
 

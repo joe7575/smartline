@@ -1,15 +1,15 @@
-# Smart Line \[tubelib_smartline\]
+# SmartLine \[smartline\]
 
 This tubelib extension provides small and smart sensors, actors and controllers.
 
 
-Browse on: ![GitHub](https://github.com/joe7575/tubelib_smartline)
+Browse on: ![GitHub](https://github.com/joe7575/smartline)
 
-Download: ![GitHub](https://github.com/joe7575/tubelib_smartline/archive/master.zip)
+Download: ![GitHub](https://github.com/joe7575/smartline/archive/master.zip)
 
 
 ## Dependencies
-tubelib, tubelib_addons2, default  
+tubelib, tubelib_addons1, tubelib_addons2, default  
 
 # License
 Copyright (C) 2018 Joachim Stolberg  

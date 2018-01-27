@@ -1,7 +1,7 @@
 --[[
 
-	Tubelib Smart Line
-	==================
+	SmartLine
+	=========
 
 	Copyright (C) 2018 Joachim Stolberg
 
@@ -22,7 +22,7 @@ local sHELP = [[label[0,0;Smart Controller Help
 Control other nodes by means of:
     IF <cond1> and/or <cond2> THEN <action>
 rules.
-This controller is able to interact with all Tubelib 
+This controller is able to interact with all SmartLine 
 compatible nodes, like buttons, lights, sensors, and so on.
 Each formspec line (rule) stands for its own. 
 The action is executed, only if 
@@ -83,27 +83,37 @@ local function eval_cond(data, flags, timers, inputs)
 	return CondRunTimeHandlers[data.__idx__](data, flags, timers, inputs) and 1 or 0
 end
 
-local function exec_action(data, flags, number)
-	ActnRunTimeHandlers[data.__idx__](data, flags, number)
+local function exec_action(data, flags, timers, number)
+	ActnRunTimeHandlers[data.__idx__](data, flags, timers, number)
 end
 
-tubelib_smartline = {}
+smartline = {}
 
 --
 -- API functions for condition/action registrations
 --
-function tubelib_smartline.register_condition(name, tData)
+function smartline.register_condition(name, tData)
 	table.insert(CondRunTimeHandlers, tData.on_execute)
 	table.insert(aConditionTypes, name)
 	tData.__idx__ = #aConditionTypes
 	kvRegisteredConditions[name] = tData
+	for _,item in ipairs(tData.formspec) do
+		if item.type == "textlist" then
+			item.num_choices = #string.split(item.choices, ",")
+		end
+	end
 end
 
-function tubelib_smartline.register_action(name, tData)
+function smartline.register_action(name, tData)
 	table.insert(ActnRunTimeHandlers, tData.on_execute)
 	table.insert(aActionTypes, name)
 	tData.__idx__ = #aActionTypes
 	kvRegisteredActions[name] = tData
+	for _,item in ipairs(tData.formspec) do
+		if item.type == "textlist" then
+			item.num_choices = #string.split(item.choices, ",")
+		end
+	end
 end
 
 
@@ -142,7 +152,10 @@ local function get_subm_data(postfix, fs_definition, fs_data)
 		if elem.type == "field" then	
 			data[elem.name] = fs_data["subm"..postfix.."_"..elem.name] or "?"
 		elseif elem.type == "textlist" then	
-			data[elem.name] = fs_data["subm"..postfix.."_"..elem.name] or 1
+			data[elem.name] = tonumber(fs_data["subm"..postfix.."_"..elem.name]) or 1
+			if data[elem.name] > elem.num_choices then
+				data[elem.name] = 1
+			end
 		end
 	end
 	-- type of the condition/action
@@ -192,6 +205,13 @@ local function runtime_data(postfix, type, fs_data)
 	local _,fs_definition = get_active_subm_definition(postfix, type, fs_data)
 	return get_subm_data(postfix, fs_definition, fs_data)
 end
+
+local function decrement_timers(timers)
+	for idx,_ in ipairs(timers) do
+		timers[idx] = timers[idx] - 1
+	end
+end
+
 
 --
 -- Condition formspec
@@ -355,14 +375,13 @@ local function formspec_main(state, fs_data)
 	end
 	tbl[#tbl+1] = "image_button[12,9;1,1;".. tubelib.state_button(state) ..";button;]"
 	tbl[#tbl+1] = "button[10,9;1.5,1;help;help]"
-	tbl[#tbl+1] = "image[0.1.5,8.4;2,2;tubelib_smartline_controller_inventory.png]"
+	tbl[#tbl+1] = "image[0.1.5,8.4;2,2;smartline_controller_inventory.png]"
 	
 	return table.concat(tbl)
 end
 
 local function eval_formspec_main(meta, fs_data, fields)
 	--print("main", dump(fields))
-	print(dump(fields))
 	for idx = 1,NUM_RULES do
 		-- eval standard inputs
 		fs_data["oprnd"..idx] = fields["oprnd"..idx] or fs_data["oprnd"..idx]
@@ -391,7 +410,7 @@ local function formspec_help()
 		"field[0,0;0,0;_type_;;help]"..
 		sHELP..
 		--"label[0.2,0;test]"..
-		"image[11,0;2,2;tubelib_smartline_controller_inventory.png]"..
+		"image[11,0;2,2;smartline_controller_inventory.png]"..
 		"button[11.5,9;1.5,1;close;close]"
 end
 
@@ -401,13 +420,14 @@ local function execute(meta, number, debug)
 	local inputs = tubelib.get_data(number, "inputs")
 	local actions = tubelib.get_data(number, "actions")
 	local timers = tubelib.get_data(number, "timers")
+	decrement_timers(timers)
 	local flags = {}
 	for i,item in ipairs(rt_rules) do
-		if eval_cond(item.cond1, flags, inputs, timers) + eval_cond(item.cond2, flags, inputs, timers) >= item.cond_cnt then
+		if eval_cond(item.cond1, flags, timers, inputs) + eval_cond(item.cond2, flags, timers, inputs) >= item.cond_cnt then
 			--print("exec rule", i)
 			if actions[i] == false then
 				-- execute action
-				exec_action(item.actn, flags, number)
+				exec_action(item.actn, flags, timers, number)
 			end
 			actions[i] = true
 		else
@@ -437,18 +457,18 @@ local function switch_state(pos, state, fs_data)
 	meta:set_int("state", state)
 	meta:set_string("formspec", formspec_main(state, fs_data))
 	if state == tubelib.RUNNING then
-		meta:set_string("infotext", "Tubelib Smart Controller "..number..": running")
+		meta:set_string("infotext", "SmartLine Smart Controller "..number..": running")
 		minetest.get_node_timer(pos):start(1)
 	else
-		meta:set_string("infotext", "Tubelib Smart Controller "..number..": stopped")
+		meta:set_string("infotext", "SmartLine Smart Controller "..number..": stopped")
 		minetest.get_node_timer(pos):stop()
 	end
 end
 
 local function start_controller(pos, number, fs_data)
-	tubelib.set_data(number, "timers", create_arr(0, NUM_RULES)) -- local timers
-	tubelib.set_data(number, "inputs", create_arr(2, NUM_RULES)) -- for rx commands
-	tubelib.set_data(number, "actions", create_arr(false, NUM_RULES)) -- for action states
+	tubelib.set_data(number, "timers", create_arr(0, NUM_RULES))  -- local timers
+	tubelib.set_data(number, "inputs", {}) 	-- for rx commands
+	tubelib.set_data(number, "actions", create_arr(false, NUM_RULES))  -- for action states
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
 
@@ -475,7 +495,7 @@ local function formspec2runtime_rule(number, owner, fs_data)
 		end
 	end 
 	tubelib.set_data(number, "rt_rules", rt_rules)
-	print("rt_rules", dump(rt_rules))
+	--print("rt_rules", dump(rt_rules))
 end
 
 
@@ -519,19 +539,19 @@ local function 	on_receive_fields(pos, formname, fields, player)
 	end
 end
 
-minetest.register_node("tubelib_smartline:controller", {
-	description = "Tubelib Smart Controller",
-	inventory_image = "tubelib_smartline_controller_inventory.png",
-	wield_image = "tubelib_smartline_controller_inventory.png",
+minetest.register_node("smartline:controller", {
+	description = "SmartLine Smart Controller",
+	inventory_image = "smartline_controller_inventory.png",
+	wield_image = "smartline_controller_inventory.png",
 	stack_max = 1,
 	tiles = {
 		-- up, down, right, left, back, front
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png^tubelib_smartline_controller.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png^smartline_controller.png",
 	},
 
 	drawtype = "nodebox",
@@ -544,7 +564,7 @@ minetest.register_node("tubelib_smartline:controller", {
 	
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
-		local number = tubelib.add_node(pos, "tubelib_smartline:controller")
+		local number = tubelib.add_node(pos, "smartline:controller")
 		local fs_data = {}
 		meta:set_string("fs_data", minetest.serialize(fs_data)) 
 		meta:set_string("owner", placer:get_player_name())
@@ -552,7 +572,7 @@ minetest.register_node("tubelib_smartline:controller", {
 		meta:set_int("state", tubelib.STOPPED)
 		meta:set_int("debug", 0)
 		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data))
-		meta:set_string("infotext", "Tubelib Smart Controller "..number..": stopped")
+		meta:set_string("infotext", "SmartLine Smart Controller "..number..": stopped")
 	end,
 
 	on_receive_fields = on_receive_fields,
@@ -577,11 +597,11 @@ minetest.register_node("tubelib_smartline:controller", {
 
 
 minetest.register_craft({
-	output = "tubelib_smartline:controller",
+	output = "smartline:controller",
 	recipe = {
-		{"",           "default:mese_crystal", ""},
-		{"group:wood", "default:mese_crystal", "tubelib_addons2:wlanchip"},
-		{"",           "default:mese_crystal", ""},
+		{"",         "default:mese_crystal", ""},
+		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"",         "default:mese_crystal", ""},
 	},
 })
 
@@ -597,7 +617,7 @@ local function set_input(meta, payload, val)
 	end
 end	
 
-tubelib.register_node("tubelib_smartline:controller", {}, {
+tubelib.register_node("smartline:controller", {}, {
 	on_recv_message = function(pos, topic, payload)
 		local meta = minetest.get_meta(pos)
 		if topic == "on" then

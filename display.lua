@@ -1,7 +1,7 @@
 --[[
 
-	Tubelib Smart Line
-	==================
+	SmartLine
+	=========
 
 	Copyright (C) 2018 Joachim Stolberg
 
@@ -9,13 +9,12 @@
 	See LICENSE.txt for more information
 
 	display.lua:
-	Derived from tubelib button
 
 ]]--
 
   
   
-display_lib.register_display_entity("tubelib_smartline:entity")
+display_lib.register_display_entity("smartline:entity")
 
 function display_update(pos, objref) 
 	local meta = minetest.get_meta(pos)
@@ -34,10 +33,10 @@ local lcd_box = {
 	wall_top = {-8/16, 15/32, -8/16, 8/16, 8/16, 8/16}
 }
 
-minetest.register_node("tubelib_smartline:display", {
-	description = "Tubelib Display",
-	inventory_image = 'tubelib_smartline_display_inventory.png',
-	tiles = {"tubelib_smartline_display.png"},
+minetest.register_node("smartline:display", {
+	description = "SmartLine Display",
+	inventory_image = 'smartline_display_inventory.png',
+	tiles = {"smartline_display.png"},
 	drawtype = "nodebox",
 	paramtype = "light",
 	sunlight_propagates = true,
@@ -47,15 +46,15 @@ minetest.register_node("tubelib_smartline:display", {
 	light_source = 6,
 	
 	display_entities = {
-		["tubelib_smartline:entity"] = { depth = 0.42,
+		["smartline:entity"] = { depth = 0.42,
 			on_display_update = display_update},
 	},
 
 	after_place_node = function(pos, placer)
-		local number = tubelib.add_node(pos, "tubelib_smartline:display")
+		local number = tubelib.add_node(pos, "smartline:display")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("number", number)
-		meta:set_string("text", " \n \nMinetest\nTubelib Smart Tools\n \nDisplay\nNumber: "..number)
+		meta:set_string("text", " \n \nMinetest\nSmartLine Smart Tools\n \nDisplay\nNumber: "..number)
 		meta:set_int("startscreen", 1)
 		display_lib.update_entities(pos)
 	end,
@@ -71,11 +70,11 @@ minetest.register_node("tubelib_smartline:display", {
 
 
 minetest.register_craft({
-	output = "tubelib_smartline:display",
+	output = "smartline:display",
 	recipe = {
 		{"", "", ""},
 		{"default:glass", "dye:green", "tubelib_addons2:wlanchip"},
-		{"", "", ""},
+		{"", "default:copper_ingot", ""},
 	},
 })
 
@@ -96,7 +95,7 @@ local function add_row(meta, payload)
 	meta:set_string("text", text)
 end
 
-tubelib.register_node("tubelib_smartline:display", {}, {
+tubelib.register_node("smartline:display", {}, {
 	on_recv_message = function(pos, topic, payload)
 		local node = minetest.get_node(pos)
 		if topic == "text" then

@@ -1,7 +1,7 @@
 --[[
 
-	Tubelib Smart Line
-	==================
+	SmartLine
+	=========
 
 	Copyright (C) 2018 Joachim Stolberg
 
@@ -15,7 +15,7 @@
 local function switch_on(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
-	node.name = "tubelib_smartline:playerdetector_active"
+	node.name = "smartline:playerdetector_active"
 	minetest.swap_node(pos, node)
 	local number = meta:get_string("number")
 	local numbers = meta:get_string("numbers")
@@ -26,7 +26,7 @@ end
 local function switch_off(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
-	node.name = "tubelib_smartline:playerdetector"
+	node.name = "smartline:playerdetector"
 	minetest.swap_node(pos, node)
 	local number = meta:get_string("number")
 	local numbers = meta:get_string("numbers")
@@ -70,7 +70,7 @@ local function formspec(numbers, names)
 		"field[0.3,1;8,1;numbers;Receiver node numbers:;"..numbers.."]" ..
 		"field[0.3,2.5;8,1;names;Player name(s):;"..names.."]" ..
 		"button_exit[5,3.5;2,1;exit;Save]"..
-		"image_button[1,3.5;1,1;tubelib_inv_button_help.png;help;]"
+		"image_button[1,3.5;1,1;SmartLine_inv_button_help.png;help;]"
 end
 
 local function on_receive_fields(pos, formname, fields, player)
@@ -93,17 +93,17 @@ local function on_receive_fields(pos, formname, fields, player)
 	end
 end
 
-minetest.register_node("tubelib_smartline:playerdetector", {
-	description = "Tubelib Player Detector",
-	inventory_image = "tubelib_smartline_detector_inventory.png",
+minetest.register_node("smartline:playerdetector", {
+	description = "SmartLine Player Detector",
+	inventory_image = "smartline_detector_inventory.png",
 	tiles = {
 		-- up, down, right, left, back, front
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png^tubelib_smartline_detector.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png^smartline_detector.png",
 	},
 
 	drawtype = "nodebox",
@@ -114,13 +114,13 @@ minetest.register_node("tubelib_smartline:playerdetector", {
 		},
 	},
 	after_place_node = function(pos, placer)
-		local number = tubelib.add_node(pos, "tubelib_smartline:playerdetector")
+		local number = tubelib.add_node(pos, "smartline:playerdetector")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("number", number)
 		local numbers = meta:get_string("numbers") or ""
 		local names = meta:get_string("names") or ""
 		meta:set_string("formspec", formspec(numbers, names))
-		meta:set_string("infotext", "Tubelib Player Detector "..number)
+		meta:set_string("infotext", "SmartLine Player Detector "..number)
 		meta:set_string("owner", placer:get_player_name())
 		minetest.get_node_timer(pos):start(1)
 	end,
@@ -148,16 +148,16 @@ minetest.register_node("tubelib_smartline:playerdetector", {
 	sounds = default.node_sound_metal_defaults(),
 })
 
-minetest.register_node("tubelib_smartline:playerdetector_active", {
-	description = "Tubelib Player Detector",
+minetest.register_node("smartline:playerdetector_active", {
+	description = "SmartLine Player Detector",
 	tiles = {
 		-- up, down, right, left, back, front
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png",
-		"tubelib_smartline.png^tubelib_smartline_detector_active.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png",
+		"smartline.png^smartline_detector_active.png",
 	},
 
 	drawtype = "nodebox",
@@ -188,19 +188,19 @@ minetest.register_node("tubelib_smartline:playerdetector_active", {
 	groups = {cracky=2, crumbly=2, not_in_creative_inventory=1},
 	is_ground_content = false,
 	sounds = default.node_sound_metal_defaults(),
-	drop = "tubelib_smartline:playerdetector"
+	drop = "smartline:playerdetector"
 })
 
 minetest.register_craft({
-	output = "tubelib_smartline:playerdetector",
+	output = "smartline:playerdetector",
 	recipe = {
 		{"", "", ""},
-		{"default:steel_ingot", "dye:blue", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
 		{"", "", ""},
 	},
 })
 
-tubelib.register_node("tubelib_smartline:playerdetector", {"tubelib_smartline:playerdetector_active"}, {
+tubelib.register_node("smartline:playerdetector", {"smartline:playerdetector_active"}, {
 	on_recv_message = function(pos, topic, payload)
 		if topic == "set_numbers" then
 			local meta = minetest.get_meta(pos)
@@ -211,3 +211,18 @@ tubelib.register_node("tubelib_smartline:playerdetector", {"tubelib_smartline:pl
 		end
 	end,
 })		
+
+minetest.register_lbm({
+	label = "[SmartLine] playerdetector update",
+	name = "smartline:update",
+	nodenames = {"tubelib_smartline:playerdetector"},
+	run_at_every_load = true,
+	action = function(pos, node)
+		print("update tubelib_smartline:playerdetector")
+		node.name = "smartline:playerdetector"
+		minetest.swap_node(pos, node)
+	end
+})
+
+
+

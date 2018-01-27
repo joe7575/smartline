@@ -1,2 +1,2 @@
-Tubelib Smart Line with small and smart sensors, actors and controllers.
+SmartLine is a Tubelib extension with small and smart sensors, actors and controllers.
 
