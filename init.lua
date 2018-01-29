@@ -15,7 +15,10 @@
 
 ]]--
 
-dofile(minetest.get_modpath("smartline") .. "/playerdetector.lua")
+if minetest.get_modpath("display_lib") and display_lib ~= nil and
+				minetest.get_modpath("font_lib") and font_lib ~= nil then
+	dofile(minetest.get_modpath("smartline") .. "/playerdetector.lua")
+end
 dofile(minetest.get_modpath("smartline") .. "/button.lua")
 dofile(minetest.get_modpath("smartline") .. "/signaltower.lua")
 dofile(minetest.get_modpath("smartline") .. "/display.lua")

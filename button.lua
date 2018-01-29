@@ -78,7 +78,7 @@ minetest.register_node("smartline:button", {
 	
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
-		local own_num = tubelib.add_node(pos, "SmartLine:button")
+		local own_num = tubelib.add_node(pos, "smartline:button")
 		meta:set_string("own_num", own_num)
 		meta:set_string("formspec", "size[5,6]"..
 		"dropdown[0.2,0;3;type;switch,button 2s,button 4s,button 8s,button 16s;1]".. 
@@ -184,17 +184,3 @@ minetest.register_craft({
 		{"", "", ""},
 	},
 })
-
-
-minetest.register_lbm({
-	label = "[SmartLine] button update",
-	name = "smartline:update",
-	nodenames = {"tubelib_smartline:button"},
-	run_at_every_load = true,
-	action = function(pos, node)
-		print("update tubelib_smartline:button")
-		node.name = "smartline:button"
-		minetest.swap_node(pos, node)
-	end
-})
-

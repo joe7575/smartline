@@ -54,7 +54,7 @@ minetest.register_node("smartline:display", {
 		local number = tubelib.add_node(pos, "smartline:display")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("number", number)
-		meta:set_string("text", " \n \nMinetest\nSmartLine Smart Tools\n \nDisplay\nNumber: "..number)
+		meta:set_string("text", " \n \nMinetest\nSmartLine Tools\n \nDisplay\nNumber: "..number)
 		meta:set_int("startscreen", 1)
 		display_lib.update_entities(pos)
 	end,
@@ -73,7 +73,7 @@ minetest.register_craft({
 	output = "smartline:display",
 	recipe = {
 		{"", "", ""},
-		{"default:glass", "dye:green", "tubelib_addons2:wlanchip"},
+		{"default:glass", "dye:green", "tubelib:wlanchip"},
 		{"", "default:copper_ingot", ""},
 	},
 })

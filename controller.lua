@@ -13,26 +13,53 @@
 ]]--
 
 
-local NUM_RULES = 8
+local NUM_RULES = 10
 
 local mail_exists = minetest.get_modpath("mail") and mail ~= nil
  
-local sHELP = [[label[0,0;Smart Controller Help
+local sHELP = [[SmartLine Controller Help
 
-Control other nodes by means of:
+Control other nodes by means of rules, according to:
     IF <cond1> and/or <cond2> THEN <action>
-rules.
-This controller is able to interact with all SmartLine 
-compatible nodes, like buttons, lights, sensors, and so on.
-Each formspec line (rule) stands for its own. 
-The action is executed, only if 
- - OR selected: one condition is true 
- - AND selected: both conditions are true
 
-The controller runs every second and executes all rules.
-Flags can be used to store conditions to trigger following rules.]
+These rules allow to execute actions based on conditions.
+Examples for conditions are:
+ - the Player Detector detects a player
+ - a button is pressed
+ - a node state is fault, blocked, standby,...
+ - a timer is expired 
+ 
+Actions are:
+ - switch on/off tubelib nodes, like lamps, door blocks, machines
+ - send mail/chat messages to the owner
+ - output a text message to the display
+ - set timer variables 
+ - set/reset flag variables
+ 
+The controller supports 8 timers (resolution in seconds) 
+and 8 flags (can be set true/false)
+
+Each Rule stands for its own, but flags can be used 
+to store conditions for subsequent rules.
+The controller executes all rules once per second. 
+All flags are cleared after each run.
+Timers can be used to trigger rules on subsequent 
+controller runs.
+
+All actions are only executed once. The conditions
+has to become false and then true again, to trigger
+the action again.
+
+The 'label' has no function. It is only used
+to better distinguish rules.
+
+Edit command examples:
+ - 'x 1 8'  exchange rows 1 with row 8
+ - 'c 1 2'  copy row 1 to 2
+ - 'd 3'    delete row 3
 ]]
 
+local sOUTPUT = "Press 'help' for edit commands" 
  
 --
 -- Helper functions
@@ -99,7 +126,8 @@ function smartline.register_condition(name, tData)
 	kvRegisteredConditions[name] = tData
 	for _,item in ipairs(tData.formspec) do
 		if item.type == "textlist" then
-			item.num_choices = #string.split(item.choices, ",")
+			item.tChoices = string.split(item.choices, ",")
+			item.num_choices = #item.tChoices
 		end
 	end
 end
@@ -111,7 +139,8 @@ function smartline.register_action(name, tData)
 	kvRegisteredActions[name] = tData
 	for _,item in ipairs(tData.formspec) do
 		if item.type == "textlist" then
-			item.num_choices = #string.split(item.choices, ",")
+			item.tChoices = string.split(item.choices, ",")
+			item.num_choices = #item.tChoices
 		end
 	end
 end
@@ -123,7 +152,7 @@ end
 
 -- Determine the selected submenu and return the corresponding
 -- formspec definition.
--- postfix: row/culum info like "11" or "a2"
+-- postfix: row/culumn info like "11" or "a2"
 -- type: "cond" or "actn"
 -- fs_data: formspec data
 
@@ -152,10 +181,9 @@ local function get_subm_data(postfix, fs_definition, fs_data)
 		if elem.type == "field" then	
 			data[elem.name] = fs_data["subm"..postfix.."_"..elem.name] or "?"
 		elseif elem.type == "textlist" then	
-			data[elem.name] = tonumber(fs_data["subm"..postfix.."_"..elem.name]) or 1
-			if data[elem.name] > elem.num_choices then
-				data[elem.name] = 1
-			end
+			local num = tonumber(fs_data["subm"..postfix.."_"..elem.name]) or 1
+			num = math.min(num, elem.num_choices)
+			data[elem.name] = {text = elem.tChoices[num], num = num}
 		end
 	end
 	-- type of the condition/action
@@ -169,15 +197,19 @@ end
 -- fs_data: formspec data
 local function field2fs_data(fs_definition, fields, fs_data)
 	for idx,elem in ipairs(fs_definition.formspec) do
+		local key = "subm"..fields._postfix_.."_"..elem.name
 		if elem.type == "field" then	
 			if fields[elem.name] then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = fields[elem.name]
+				fs_data[key] = fields[elem.name]
 			end
 		elseif elem.type == "textlist" then	
 			local evt = minetest.explode_textlist_event(fields[elem.name])
 			if evt.type == "CHG" then
-				fs_data["subm"..fields._postfix_.."_"..elem.name] = evt.index
+				fs_data[key] = evt.index
 			end
+		end
+		if fs_data[key] == nil then
+			fs_data[key] = elem.default
 		end
 	end
 	return fs_data
@@ -317,12 +349,12 @@ end
 -- evaluate the row label
 local function eval_formspec_label(meta, fs_data, fields)
 	--print("label", dump(fields))
-	fs_data["subm"..fields._postfix_.."_label"] = fields.label
+	fs_data["subml"..fields._postfix_.."_label"] = fields.label
 	if fields._exit_ == nil then
 		meta:set_string("formspec", formspec_label(fields._postfix_, fs_data))
 	end
 	-- set the button label of the main menu based on the given input in the submenu
-	fs_data["label"..fields._postfix_] = fs_data["subm"..fields._postfix_.."_label"]
+	fs_data["label"..fields._postfix_] = fs_data["subml"..fields._postfix_.."_label"]
 	return fs_data
 end
 
@@ -331,7 +363,7 @@ end
 -- Operand formspec
 --
 local function formspec_oprnd(_postfix_, fs_data)
-	local oprnd = fs_data["subm".._postfix_.."_oprnd"] or ""
+	local oprnd = fs_data["submo".._postfix_.."_oprnd"] or ""
 	return "size[6,4]"..
 		default.gui_bg..
 		default.gui_bg_img..
@@ -348,35 +380,38 @@ local function eval_formspec_oprnd(meta, fs_data, fields)
 	--print("label", dump(fields))
 	local oprnd = minetest.explode_textlist_event(fields.oprnd)
 	if oprnd.type == "CHG" then
-		fs_data["subm"..fields._postfix_.."_oprnd"] = oprnd.index
+		fs_data["submo"..fields._postfix_.."_oprnd"] = oprnd.index
 	end
 	if fields._exit_ == nil then
 		meta:set_string("formspec", formspec_oprnd(fields._postfix_, fs_data))
 	end
 	-- set the button label of the main menu based on the given input in the submenu
-	fs_data["oprnd"..fields._postfix_] = fs_data["subm"..fields._postfix_.."_oprnd"] == 1 and "or" or "and"
+	fs_data["oprnd"..fields._postfix_] = fs_data["submo"..fields._postfix_.."_oprnd"] == 1 and "or" or "and"
 	return fs_data
 end
 
-local function formspec_main(state, fs_data)
-	local tbl = {"size[13,10]"..
+local function formspec_main(state, fs_data, output)
+	local tbl = {"size[13,10;true]"..
 		default.gui_bg..
 		default.gui_bg_img..
 		default.gui_slots..
 		"field[0,0;0,0;_type_;;main]"..
-		"label[0.3,0;label:]label[3.3,0;IF  cond 1:]label[6,0;and/or]label[7.3,0;cond 2:]label[10.2,0;THEN  action:]"}
+		"label[0.8,0;label:]label[3.3,0;IF  cond 1:]label[6,0;and/or]label[7.3,0;cond 2:]label[10.2,0;THEN  action:]"}
 		
 	for idx = 1,NUM_RULES do
-		tbl[#tbl+1] = "button[0,".. (-0.5+idx)..";2.9,1;label"..idx..";"..(fs_data["label"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[3,".. (-0.5+idx)..";2.9,1;cond1"..idx..";"..(fs_data["cond1"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[6,".. (-0.5+idx)..";1,1;oprnd"..  idx..";"..(fs_data["oprnd"..idx] or "or").."]"
-		tbl[#tbl+1] = "button[7,".. (-0.5+idx)..";2.9,1;cond2"..idx..";"..(fs_data["cond2"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[10,"..(-0.5+idx)..";2.9,1;actna"..idx..";"..(fs_data["actna"..idx] or "...").."]"
+		local ypos = idx * 0.8 - 0.4
+		tbl[#tbl+1] = "label[0,"..(0.2+ypos)..";"..idx.."]"
+		tbl[#tbl+1] = "button[0.4,"..ypos..";2.5,1;label"..idx..";"..(fs_data["label"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[3,"..  ypos..";2.9,1;cond1"..idx..";"..(fs_data["cond1"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[6,"..  ypos..";1,1;oprnd"..  idx..";"..(fs_data["oprnd"..idx] or "or").."]"
+		tbl[#tbl+1] = "button[7,"..  ypos..";2.9,1;cond2"..idx..";"..(fs_data["cond2"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[10,".. ypos..";2.9,1;actna"..idx..";"..(fs_data["actna"..idx] or "...").."]"
 	end
 	tbl[#tbl+1] = "image_button[12,9;1,1;".. tubelib.state_button(state) ..";button;]"
-	tbl[#tbl+1] = "button[10,9;1.5,1;help;help]"
-	tbl[#tbl+1] = "image[0.1.5,8.4;2,2;smartline_controller_inventory.png]"
-	
+	tbl[#tbl+1] = "button[10.2,9;1.5,1;help;help]"
+	tbl[#tbl+1] = "label[0.2,8.8;"..output.."]"
+	tbl[#tbl+1] = "field[0.4,9.6;4.8,1;cmnd;;<cmnd>]"
+	tbl[#tbl+1] = "button[5,9.3;1,1;ok;OK]"
 	return table.concat(tbl)
 end
 
@@ -402,15 +437,15 @@ local function eval_formspec_main(meta, fs_data, fields)
 	return fs_data
 end
 
-local function formspec_help()
+local function formspec_help(offs)
 	return "size[13,10]"..
 		default.gui_bg..
 		default.gui_bg_img..
 		default.gui_slots..
 		"field[0,0;0,0;_type_;;help]"..
-		sHELP..
+		"label[0,"..(-offs/50)..";"..sHELP.."]"..
 		--"label[0.2,0;test]"..
-		"image[11,0;2,2;smartline_controller_inventory.png]"..
+		"scrollbar[11.5,1;0.5,7;vertical;sb_help;"..offs.."]"..
 		"button[11.5,9;1.5,1;close;close]"
 end
 
@@ -440,14 +475,12 @@ local function execute(meta, number, debug)
 end
 
 local function check_rules(pos, elapsed)
-	local t = minetest.get_us_time()
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
 	local state = meta:get_int("state")
 	if state == tubelib.RUNNING and number then
 		execute(meta, number, debug)
 	end
-	print("t", minetest.get_us_time() - t)
 	return true
 end
 
@@ -455,12 +488,12 @@ local function switch_state(pos, state, fs_data)
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
 	meta:set_int("state", state)
-	meta:set_string("formspec", formspec_main(state, fs_data))
+	meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
 	if state == tubelib.RUNNING then
-		meta:set_string("infotext", "SmartLine Smart Controller "..number..": running")
+		meta:set_string("infotext", "SmartLine Controller "..number..": running")
 		minetest.get_node_timer(pos):start(1)
 	else
-		meta:set_string("infotext", "SmartLine Smart Controller "..number..": stopped")
+		meta:set_string("infotext", "SmartLine Controller "..number..": stopped")
 		minetest.get_node_timer(pos):stop()
 	end
 end
@@ -495,13 +528,91 @@ local function formspec2runtime_rule(number, owner, fs_data)
 		end
 	end 
 	tubelib.set_data(number, "rt_rules", rt_rules)
-	--print("rt_rules", dump(rt_rules))
+	print("rt_rules", dump(rt_rules))
 end
 
 
+local function get_keys(fs_data)
+	-- collect all keys and remove row information
+	local keys = {}
+	for k,v in pairs(fs_data) do
+		local key = string.sub(k,1,5).."*"..string.sub(k, 7)
+		if type(v) == 'number' then
+			keys[key] = 1  -- default value
+		else
+			keys[key] = "..."  -- default value
+		end
+	end
+	return keys
+end
+
+local function exchange_rules(fs_data, pos1, pos2)
+	-- exchange elem by elem
+	for k,v in pairs(get_keys(fs_data)) do
+		local k1 = string.gsub(k, "*", pos1)
+		local k2 = string.gsub(k, "*", pos2)
+		local temp = fs_data[k1] or v
+		fs_data[k1] = fs_data[k2] or v
+		fs_data[k2] = temp
+	end
+	return fs_data
+end
+
+local function copy_rule(fs_data, pos1, pos2)
+	-- copy elem by elem
+	for k,v in pairs(get_keys(fs_data)) do
+		local k1 = string.gsub(k, "*", pos1)
+		local k2 = string.gsub(k, "*", pos2)
+		fs_data[k2] = fs_data[k1] or v
+	end
+	return fs_data
+end
+
+local function delete_rule(fs_data, pos)
+	for k,v in pairs(get_keys(fs_data)) do
+		local k1 = string.gsub(k, "*", pos)
+		fs_data[k1] = nil
+	end
+	return fs_data
+end
+
+local function edit_command(fs_data, text)
+	local cmnd, pos1, pos2 = text:match('^(%S)%s(%d+)%s(%d+)$')
+	if pos2 == nil then
+		cmnd, pos1 = text:match('^(%S)%s(%d+)$')
+	end
+	if cmnd and pos1 and pos2 then
+		if cmnd == "x" then 
+			exchange_rules(fs_data, pos1, pos2) 
+			return "rows "..pos1.." and "..pos2.." exchanged"
+		end
+		if cmnd == "c" then
+			copy_rule(fs_data, pos1, pos2) 
+			return "row "..pos1.." copied to "..pos2
+		end
+	elseif cmnd == "d" and pos1 then
+		delete_rule(fs_data, pos1)
+		return "row "..pos1.." deleted"
+	end
+	return "Invalid command '"..text.."'"
+end
+
 local function 	on_receive_fields(pos, formname, fields, player)
+	print("fields", dump(fields))
 	local meta = minetest.get_meta(pos)
+	local owner = meta:get_string("owner")
+	if not player or not player:is_player() then
+		return
+	end
+	if player:get_player_name() ~= owner then
+		return
+	end
 	local fs_data = minetest.deserialize(meta:get_string("fs_data")) or {}
+	local output = ""
+	if fields.ok then	
+		output = edit_command(fs_data, fields.cmnd)
+		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, output))
+	end
 	if fields._type_ == "main" then
 		fs_data = eval_formspec_main(meta, fs_data, fields)
 	elseif fields._type_ == "label" then
@@ -513,34 +624,38 @@ local function 	on_receive_fields(pos, formname, fields, player)
 	elseif fields._type_ == "actn" then
 		fs_data = eval_formspec_actn(meta, fs_data, fields)
 	elseif fields._type_ == "help" then
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data))
+		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
 	end
 	meta:set_string("fs_data", minetest.serialize(fs_data))
 	
 	if fields._exit_ then
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data))
+		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
 		stop_controller(pos, fs_data)
 	elseif fields.help then
 		stop_controller(pos, fs_data)
-		meta:set_string("formspec", formspec_help())
+		meta:set_string("formspec", formspec_help(1))
+	elseif fields.sb_help then
+		local evt = minetest.explode_scrollbar_event(fields.sb_help)
+		if evt.type == "CHG" then
+			meta:set_string("formspec", formspec_help(evt.value))
+		end
 	elseif fields.button then
 		local number = meta:get_string("number")
-		local owner = meta:get_string("owner")
 		local state = meta:get_int("state")
 		if state == tubelib.RUNNING then
 			stop_controller(pos, fs_data)
-			meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data))
+			meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
 		else
 			formspec2runtime_rule(number, owner, fs_data)
 			start_controller(pos, number, fs_data)
-			meta:set_string("formspec", formspec_main(tubelib.RUNNING, fs_data))
+			meta:set_string("formspec", formspec_main(tubelib.RUNNING, fs_data, sOUTPUT))
 		end
 		
 	end
 end
 
 minetest.register_node("smartline:controller", {
-	description = "SmartLine Smart Controller",
+	description = "SmartLine Controller",
 	inventory_image = "smartline_controller_inventory.png",
 	wield_image = "smartline_controller_inventory.png",
 	stack_max = 1,
@@ -571,8 +686,8 @@ minetest.register_node("smartline:controller", {
 		meta:set_string("number", number)
 		meta:set_int("state", tubelib.STOPPED)
 		meta:set_int("debug", 0)
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data))
-		meta:set_string("infotext", "SmartLine Smart Controller "..number..": stopped")
+		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
+		meta:set_string("infotext", "SmartLine Controller "..number..": stopped")
 	end,
 
 	on_receive_fields = on_receive_fields,
@@ -581,6 +696,13 @@ minetest.register_node("smartline:controller", {
 		if minetest.is_protected(pos, puncher:get_player_name()) then
 			return
 		end
+		
+		local meta = minetest.get_meta(pos)
+		local state = meta:get_int("state")
+		if state ~= tubelib.STOPPED then
+			return
+		end
+			
 		minetest.node_dig(pos, node, puncher, pointed_thing)
 		tubelib.remove_node(pos)
 	end,
@@ -590,7 +712,7 @@ minetest.register_node("smartline:controller", {
 	paramtype = "light",
 	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	groups = {choppy=2, cracky=2, crumbly=2},
+	groups = {choppy=1, cracky=1, crumbly=1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 })
@@ -600,7 +722,7 @@ minetest.register_craft({
 	output = "smartline:controller",
 	recipe = {
 		{"",         "default:mese_crystal", ""},
-		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"",         "default:mese_crystal", ""},
 	},
 })
@@ -621,9 +743,9 @@ tubelib.register_node("smartline:controller", {}, {
 	on_recv_message = function(pos, topic, payload)
 		local meta = minetest.get_meta(pos)
 		if topic == "on" then
-			set_input(meta, payload, 1)
+			set_input(meta, payload, topic)
 		elseif topic == "off" then
-			set_input(meta, payload, 0)
+			set_input(meta, payload, topic)
 		elseif topic == "state" then
 			local state = meta:get_int("state")
 			return tubelib.statestring(state)

@@ -8,9 +8,23 @@
 	LGPLv2.1+
 	See LICENSE.txt for more information
 
-	controller.lua:
+	command.lua:
+	
+	Register all basic controller commands
 
 ]]--
+
+smartline.register_condition("", {
+	formspec = {},
+	on_execute = function(data, flags, timers, inputs) end,
+	button_label = function(data) return ""	end,
+})
+
+smartline.register_action("", {
+	formspec = {},
+	on_execute = function(data, flags, timers, inputs) end,
+	button_label = function(data) return ""	end,
+})
 
 
 smartline.register_condition("true", {
@@ -51,10 +65,10 @@ smartline.register_condition("flag test", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs) 
-		return flags[data.flag] == data.value 
+		return flags[data.flag.num] == data.value.text
 	end,
 	button_label = function(data) 
-		return "f"..data.flag.."=="..(({"true", "false"})[data.value] or "?")
+		return data.flag.text.."=="..data.value.text
 	end,
 })
 
@@ -76,10 +90,10 @@ smartline.register_action("flag set", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		flags[data.flag] = data.value 
+		flags[data.flag.num] = data.value.text
 	end,
 	button_label = function(data) 
-		return "f"..data.flag.."="..({"true", "false"})[data.value] 
+		return data.flag.text.."="..data.value.text
 	end,
 })
 
@@ -100,11 +114,10 @@ smartline.register_condition("check input", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs) 
-		local bool = data.value == 1 and 1 or 0
-		return inputs[data.number] == bool
+		return inputs[data.number] == data.value.text
 	end,
 	button_label = function(data) 
-		return "i("..data.number..")=="..({"on", "off"})[data.value] 
+		return "i("..data.number..")=="..data.value.text 
 	end,
 })
 
@@ -120,10 +133,10 @@ smartline.register_condition("timer test", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs) 
-		return timers[data.timer] == 0
+		return timers[data.timer.num] == 0
 	end,
 	button_label = function(data) 
-		return "t"..data.timer.." expired"
+		return data.timer.text.." expired"
 	end,
 })
 
@@ -144,10 +157,10 @@ smartline.register_action("timer start", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		timers[data.timer] = data.value 
+		timers[data.timer.num] = data.value 
 	end,
 	button_label = function(data) 
-		return "t"..data.timer.."="..data.value 
+		return data.timer.text.."="..data.value 
 	end,
 })
 
@@ -163,18 +176,16 @@ smartline.register_condition("Pusher state", {
 			type = "textlist",
 			name = "value",
 			label = "is",
-			choices = "stopped,running,standby,blocked,faulty",
+			choices = "stopped,running,standby,blocked,fault",
 			default = 1,
 		},
 	},
 	
 	on_execute = function(data, flags, timers, inputs) 
-		local state = ({"stopped", "running", "standby", "blocked"})[data.value]
-		return SmartLine.send_request(data.number, nil, nil, "state", "") == state
+		return tubelib.send_request(data.number, "state", "") == data.value.text
 	end,
 	button_label = function(data) 
-		local state = ({"stp", "run", "sby", "blk"})[data.value]
-		return "state("..data.number..")=="..state
+		return "st("..data.number..")=="..string.sub(data.value.text, 1, 4).."."
 	end,
 })
 
@@ -196,12 +207,10 @@ smartline.register_condition("fuel state", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs) 
-		local state = ({"full", "empty"})[data.value]
-		return SmartLine.send_request(data.number, nil, nil, "fuel", nil) == state
+		return tubelib.send_request(data.number, "fuel", nil) == data.value.text
 	end,
 	button_label = function(data) 
-		local state = ({"f..", "e.."})[data.value]
-		return "state("..data.number..")=="..state
+		return "st("..data.number..")=="..data.value.text
 	end,
 })
 
@@ -222,12 +231,10 @@ smartline.register_action("Signal Tower command", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		local color = ({"off", "green", "amber", "red"})[data.value]
-		SmartLine.send_message(data.number, data.owner, nil, color, number)
+		tubelib.send_message(data.number, data.owner, nil, data.value.text, number)
 	end,
 	button_label = function(data) 
-		local color = ({"off", "grn", "amb", "red"})[data.value]
-		return "sig("..data.number..")="..color 
+		return "sig("..data.number..","..data.value.text..")"
 	end,
 })
 
@@ -248,12 +255,10 @@ smartline.register_action("switch nodes on/off", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		local cmnd = data.value == 1 and "on" or "off"
-		SmartLine.send_message(data.number, data.owner, nil, cmnd, number)
+		tubelib.send_message(data.number, data.owner, nil, data.value.text, number)
 	end,
 	button_label = function(data) 
-		local state = ({"on", "off"})[data.value]
-		return "cmnd("..data.number..")="..state 
+		return "cmnd("..data.number..","..data.value.text..")"
 	end,
 })
 
@@ -273,10 +278,9 @@ smartline.register_action("Display", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		SmartLine.send_message(data.number, data.owner, nil, "row", data.text)
+		tubelib.send_message(data.number, data.owner, nil, "row", data.text)
 	end,
 	button_label = function(data) 
-		local color = ({"off", "grn", "amb", "red"})[data.value]
 		return "dispay("..data.number..")"
 	end,
 })
@@ -309,7 +313,8 @@ smartline.register_action("chat", {
 			default = "",
 		},
 	},
-	on_execute = function(data, flags, timers, number) 
+	on_execute = function(data, flags, timers, number)
+		print("chat")
 		minetest.chat_send_player(data.owner, "[SmartLine Controller] "..data.text)
 	end,
 	button_label = function(data) 

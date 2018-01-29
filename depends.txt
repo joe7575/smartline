@@ -1,7 +1,5 @@
 default
 tubelib
-tubelib_addons1
-tubelib_addons2
-display_lib
-font_lib
+display_lib?
+font_lib?
 mail?

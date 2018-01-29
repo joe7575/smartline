@@ -70,7 +70,7 @@ local function formspec(numbers, names)
 		"field[0.3,1;8,1;numbers;Receiver node numbers:;"..numbers.."]" ..
 		"field[0.3,2.5;8,1;names;Player name(s):;"..names.."]" ..
 		"button_exit[5,3.5;2,1;exit;Save]"..
-		"image_button[1,3.5;1,1;SmartLine_inv_button_help.png;help;]"
+		"image_button[1,3.5;1,1;smartline_inv_button_help.png;help;]"
 end
 
 local function on_receive_fields(pos, formname, fields, player)
@@ -195,7 +195,7 @@ minetest.register_craft({
 	output = "smartline:playerdetector",
 	recipe = {
 		{"", "", ""},
-		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"", "", ""},
 	},
 })
@@ -211,18 +211,4 @@ tubelib.register_node("smartline:playerdetector", {"smartline:playerdetector_act
 		end
 	end,
 })		
-
-minetest.register_lbm({
-	label = "[SmartLine] playerdetector update",
-	name = "smartline:update",
-	nodenames = {"tubelib_smartline:playerdetector"},
-	run_at_every_load = true,
-	action = function(pos, node)
-		print("update tubelib_smartline:playerdetector")
-		node.name = "smartline:playerdetector"
-		minetest.swap_node(pos, node)
-	end
-})
-
-
 

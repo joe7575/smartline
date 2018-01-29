@@ -9,7 +9,8 @@ Download: ![GitHub](https://github.com/joe7575/smartline/archive/master.zip)
 
 
 ## Dependencies
-tubelib, tubelib_addons1, tubelib_addons2, default  
+tubelib, default  
+optional: display_lib, font_lib  
 
 # License
 Copyright (C) 2018 Joachim Stolberg  

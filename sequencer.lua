@@ -17,6 +17,18 @@ local RUNNING_STATE = 1
 local STOP_STATE = 0
 local NUM_SLOTS = 8
 
+local sHELP = [[label[0,0;SmartLine Sequencer Help
+
+Define a sequence of commands to control other machines.
+Numbers(s) are the node numbers, the command shall sent to.
+The commands 'on'/'off' are used for machines and other nodes.
+Offset is the time to the next line in seconds (0..999).
+If endless is set, the Sequencer restarts again and again.
+The command '  ' does nothing, only consuming the offset time.
+]
+]]
+
+
 local sAction = ",on,off"
 local kvAction = {[""]=1, ["on"]=2, ["off"]=3}
 local tAction = {nil, "on", "off"}
@@ -35,25 +47,21 @@ local function formspec(state, rules, endless)
 		tbl[#tbl+1] = "field[6.2,"..(-0.2+idx)..";2,1;offs"..idx..";;"..(rule.offs or "").."]"
 	end
 	tbl[#tbl+1] = "checkbox[0,8.5;endless;Run endless;"..endless.."]"
-	tbl[#tbl+1] = "image_button[5,8.5;1,1;".. tubelib.state_button(state) ..";button;]"
-	tbl[#tbl+1] = "image_button[7,8.5;1,1;tubelib_inv_button_help.png;help;]"
+	tbl[#tbl+1] = "button[4.5,8.5;1.5,1;help;help]"
+	tbl[#tbl+1] = "image_button[6.5,8.5;1,1;".. tubelib.state_button(state) ..";button;]"
 	
 	return table.concat(tbl)
 end
 
 local function formspec_help()
-	return "size[8,9.2]"..
+	return "size[13,10]"..
 		default.gui_bg..
 		default.gui_bg_img..
 		default.gui_slots..
-		"label[2,0;Sequencer Help]"..
-		"label[0,1;Define a sequence of commands\nto control other machines.]"..
-		"label[0,2.2;Numbers(s) are the node numbers,\nthe command shall sent to.]"..
-		"label[0,3.4;The commands 'on'/'off' are used\n for machines and other nodes.]"..
-		"label[0,4.6;Offset is the time to the\nnext line in seconds (0..999).]"..
-		"label[0,5.8;If endless is set, the Sequencer\nrestarts again and again.]"..
-		"label[0,7;The command '  ' does nothing,\nonly consuming the offset time.]"..
-		"button[3,8;2,1;exit;close]"
+		"field[0,0;0,0;_type_;;help]"..
+		sHELP..
+		--"label[0.2,0;test]"..
+		"button[11.5,9;1.5,1;close;close]"
 end
 
 local function stop_the_sequencer(pos)
@@ -101,7 +109,7 @@ local function check_rules(pos, elapsed)
 		while true do -- process all rules as long as offs == 0
 			local rule = rules[index]
 			local offs = rules[index].offs
-			tubelib.send_message(rule.num, placer_name, nil, tAction[rule.act], nil)
+			tubelib.send_message(rule.num, placer_name, nil, tAction[rule.act], number)
 			index = get_next_slot(index, rules, endless)
 			if index ~= nil and offs ~= nil and running == 1 then
 				-- after the last rule a pause with 2 or more sec is required
@@ -128,7 +136,7 @@ local function start_the_sequencer(pos)
 	local number = meta:get_string("number")
 	meta:set_int("running", 1)
 	meta:set_int("index", 1)
-	meta:set_string("infotext", "Tubelib Sequencer "..number..": running (1/"..NUM_SLOTS..")")
+	meta:set_string("infotext", "SmartLine Sequencer "..number..": running (1/"..NUM_SLOTS..")")
 	local rules = minetest.deserialize(meta:get_string("rules"))
 	local endless = meta:get_int("endless") or 0
 	meta:set_string("formspec", formspec(tubelib.RUNNING, rules, endless))
@@ -142,7 +150,6 @@ local function 	on_receive_fields(pos, formname, fields, player)
 	if minetest.is_protected(pos, player:get_player_name()) then
 		return
 	end
-	print(dump(fields))------------------------------------------------------------------
 	if fields.help ~= nil then
 		meta:set_string("formspec", formspec_help())
 		return
@@ -255,7 +262,7 @@ minetest.register_craft({
 	output = "smartline:sequencer",
 	recipe = {
 		{"",         "default:mese_crystal", ""},
-		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"",         "", ""},
 	},
 })

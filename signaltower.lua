@@ -102,7 +102,7 @@ minetest.register_craft({
 	recipe = {
 		{"dye:red",    "default:copper_ingot", ""},
 		{"dye:orange", "default:glass", ""},
-		{"dye:green",  "tubelib_addons2:wlanchip", ""},
+		{"dye:green",  "tubelib:wlanchip", ""},
 	},
 })
 

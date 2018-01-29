@@ -15,6 +15,13 @@
 
 local CYCLE_TIME = 8
 
+local sHELP = [[label[0,0;SmartLine Timer Help
+
+tbd
+]
+]]
+
+
 local tTime = {
 	["00:00"] = 1, ["02:00"] = 2, ["04:00"] = 3, 
 	["06:00"] = 4, ["08:00"] = 5, ["10:00"] = 6,
@@ -63,9 +70,20 @@ local function formspec(events, numbers, actions)
 		"field[2.3,6.2;2,1;n6;;"..numbers[6].."]" ..
 		"dropdown[4.5,6;3,1;a6;"..sAction..";"..tAction[actions[6]].."]".. 
 		
-		"button_exit[3,7;2,1;exit;close]"
+		"button[4.5,7;1.5,1;help;help]"..
+		"button_exit[6.5,7;1.5,1;exit;close]"
 end
 
+local function formspec_help()
+	return "size[13,10]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"field[0,0;0,0;_type_;;help]"..
+		sHELP..
+		--"label[0.2,0;test]"..
+		"button[11.5,9;1.5,1;close;close]"
+end
 
 local function check_rules(pos,elapsed)
 	local hour = math.floor(minetest.get_timeofday() * 24)
@@ -75,13 +93,14 @@ local function check_rules(pos,elapsed)
 	local actions = minetest.deserialize(meta:get_string("actions"))
 	local done = minetest.deserialize(meta:get_string("done"))
 	local placer_name = meta:get_string("placer_name")
+	local own_num = meta:get_string("own_num")
 	
 	-- check all rules
 	for idx,act in ipairs(actions) do
 		if act ~= "" and numbers[idx] ~= "" then
 			local hr = (events[idx] - 1) * 2
 			if hour == hr and done[idx] == false then
-				tubelib.send_message(numbers[idx], placer_name, nil, act, nil)
+				tubelib.send_message(numbers[idx], placer_name, nil, act, own_num)
 				done[idx] = true
 			end
 		end
@@ -92,7 +111,7 @@ local function check_rules(pos,elapsed)
 		done = {false,false,false,false,false,false}
 	end
 	meta:set_string("done",  minetest.serialize(done))
-	meta:set_string("infotext","Tubelib Timer "..hour..":00")
+	meta:set_string("infotext","SmartLine Timer ("..own_num..")"..hour..":00")
 	return true
 end
 
@@ -125,6 +144,8 @@ minetest.register_node("smartline:timer", {
 		local numbers = {"0000","","","","",""}
 		local actions = {"","","","","",""}
 		local done = {false,false,false,false,false,false}
+		local own_num = tubelib.add_node(pos, "smartline:timer")
+		meta:set_string("own_num", own_num)
 		meta:set_string("placer_name", placer:get_player_name())
 		meta:set_string("events",  minetest.serialize(events))
 		meta:set_string("numbers", minetest.serialize(numbers))
@@ -139,7 +160,10 @@ minetest.register_node("smartline:timer", {
 		if minetest.is_protected(pos, player:get_player_name()) then
 			return
 		end
-		
+		if fields.help ~= nil then
+			meta:set_string("formspec", formspec_help())
+			return
+		end
 		local events = minetest.deserialize(meta:get_string("events"))
 		for idx, evt in ipairs({fields.e1, fields.e2, fields.e3, fields.e4, fields.e5, fields.e6}) do
 			if evt ~= nil then
@@ -188,7 +212,7 @@ minetest.register_craft({
 	output = "smartline:timer",
 	recipe = {
 		{"",         "", ""},
-		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"",         "default:mese_crystal", ""},
 	},
 })
