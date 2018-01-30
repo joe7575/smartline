@@ -228,6 +228,8 @@ local function add_controls_to_table(tbl, postfix, fs_data, fs_definition)
 			val = fs_data["subm"..postfix.."_"..elem.name] or elem.default
 			tbl[#tbl+1] = "textlist[0.0,"..(offs+0.5)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
 			offs = offs + 2.4
+		elseif elem.type == "label" then
+			offs = offs + 0.6
 		end
 	end
 	return tbl

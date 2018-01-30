@@ -25,7 +25,7 @@ Download: ![GitHub](https://github.com/joe7575/smartline/archive/master.zip)
 
 
 ## Dependencies
-tubelib, default  
+tubelib, default, doors  
 optional: display_lib, font_lib, mail  
 
 # License

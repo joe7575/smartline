@@ -314,10 +314,59 @@ smartline.register_action("chat", {
 		},
 	},
 	on_execute = function(data, flags, timers, number)
-		print("chat")
 		minetest.chat_send_player(data.owner, "[SmartLine Controller] "..data.text)
 	end,
 	button_label = function(data) 
 		return "chat(...)"
 	end,
 })
+
+local function door_toggle(pos, owner, state)
+	pos = minetest.string_to_pos("("..pos..")")
+	print("pos", dump(pos))
+	if pos then
+		local door = doors.get(pos)
+		print("door", dump(door))
+		if door then
+			local player = {
+				get_player_name = function() return owner end,
+			}
+			print("player", dump(player))
+			if state == "open" then
+				door:open(player)
+			elseif state == "close" then
+				door:close(player)
+			end
+		end
+	end
+end
+
+smartline.register_action("doors open/close", {
+	formspec = {
+		{
+			type = "field", 
+			name = "pos", 
+			label = "door position like '123,7,-1200'", 
+			default = "",
+		},
+		{
+			type = "label", 
+			name = "lbl1", 
+			label = "Hint: use a marker stick to determine the door position", 
+		},
+		{
+			type = "textlist", 
+			name = "state",
+			label = "set",      
+			choices = "open,close", 
+			default = 1,
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		door_toggle(data.pos, data.owner, data.state.text)
+	end,
+	button_label = function(data) 
+		return "door("..data.state.text..")"
+	end,
+})
+
