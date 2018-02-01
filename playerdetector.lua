@@ -39,12 +39,19 @@ local function scan_for_player(pos)
 	local names = meta:get_string("names") or ""
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, 4)) do
 		if object:is_player() then
-			if names == "" then return true end
+			if names == "" then 
+				meta:set_string("player_name", object:get_player_name())
+				return true 
+			end
 			for _,name in ipairs(string.split(names, " ")) do
-				if object:get_player_name() == name then return true end
+				if object:get_player_name() == name then 
+					meta:set_string("player_name", name)
+					return true 
+				end
 			end
 		end
 	end
+	meta:set_string("player_name", nil)
 	return false
 end
 
@@ -70,7 +77,7 @@ local function formspec(numbers, names)
 		"field[0.3,1;8,1;numbers;Receiver node numbers:;"..numbers.."]" ..
 		"field[0.3,2.5;8,1;names;Player name(s):;"..names.."]" ..
 		"button_exit[5,3.5;2,1;exit;Save]"..
-		"image_button[1,3.5;1,1;smartline_inv_button_help.png;help;]"
+		"button[1,3.5;1,1;help;help;]"
 end
 
 local function on_receive_fields(pos, formname, fields, player)
@@ -208,6 +215,9 @@ tubelib.register_node("smartline:playerdetector", {"smartline:playerdetector_act
 			local names = meta:get_string("names") or ""
 			meta:set_string("formspec", formspec(payload, names))
 			return true
+		elseif topic == "name" then
+			local meta = minetest.get_meta(pos)
+			return meta:get_string("player_name")
 		end
 	end,
 })		

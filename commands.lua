@@ -16,7 +16,7 @@
 
 smartline.register_condition("", {
 	formspec = {},
-	on_execute = function(data, flags, timers, inputs) end,
+	on_execute = function(data, flags, timers, inputs, actions) end,
 	button_label = function(data) return ""	end,
 })
 
@@ -29,7 +29,7 @@ smartline.register_action("", {
 
 smartline.register_condition("true", {
 	formspec = {},
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return true
 	end,
 	button_label = function(data) 
@@ -39,7 +39,7 @@ smartline.register_condition("true", {
 
 smartline.register_condition("false", {
 	formspec = {},
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return false
 	end,
 	button_label = function(data) 
@@ -63,8 +63,13 @@ smartline.register_condition("flag test", {
 			choices = "true,false", 
 			default = 1,
 		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Don't forget to reset the flag again.", 
+		},
 	},
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return flags[data.flag.num] == data.value.text
 	end,
 	button_label = function(data) 
@@ -87,6 +92,11 @@ smartline.register_action("flag set", {
 			label = "to value", 
 			choices = "true,false", 
 			default = 1,
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Flags are stored permanently and can be used by other rules.", 
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
@@ -112,8 +122,13 @@ smartline.register_condition("check input", {
 			choices = "on,off",
 			default = 1,
 		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Connect the input nodes with the controller", 
+		},
 	},
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return inputs[data.number] == data.value.text
 	end,
 	button_label = function(data) 
@@ -132,7 +147,7 @@ smartline.register_condition("timer test", {
 			default = 1,
 		},
 	},
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return timers[data.timer.num] == 0
 	end,
 	button_label = function(data) 
@@ -179,9 +194,14 @@ smartline.register_condition("Pusher state", {
 			choices = "stopped,running,standby,blocked,fault",
 			default = 1,
 		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint:\n - standby means 'nothing to do'\n - blocked means 'inventory is full'", 
+		},
 	},
 	
-	on_execute = function(data, flags, timers, inputs) 
+	on_execute = function(data, flags, timers, inputs, actions) 
 		return tubelib.send_request(data.number, "state", "") == data.value.text
 	end,
 	button_label = function(data) 
@@ -201,16 +221,24 @@ smartline.register_condition("fuel state", {
 			type = "textlist",
 			name = "value",
 			label = "is",
-			choices = "full,empty",
+			choices = "full,empty,not full,not empty",
 			default = 1,
 		},
 	},
 	
-	on_execute = function(data, flags, timers, inputs) 
-		return tubelib.send_request(data.number, "fuel", nil) == data.value.text
+	on_execute = function(data, flags, timers, inputs, actions) 
+		if data.value.num > 2 then
+			return tubelib.send_request(data.number, "fuel", nil) ~= string.sub(data.value.text, 5)
+		else
+			return tubelib.send_request(data.number, "fuel", nil) == data.value.text
+		end
 	end,
 	button_label = function(data) 
-		return "st("..data.number..")=="..data.value.text
+		if data.value.num > 2 then
+			return "st("..data.number..")<>"..string.sub(data.value.text, 5)
+		else
+			return "st("..data.number..")=="..data.value.text
+		end
 	end,
 })
 
@@ -252,6 +280,11 @@ smartline.register_action("switch nodes on/off", {
 			label = "to state",      
 			choices = "on,off", 
 			default = 1,
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Used for pushers, lamps, machines, gates,...", 
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
@@ -350,16 +383,16 @@ smartline.register_action("doors open/close", {
 			default = "",
 		},
 		{
-			type = "label", 
-			name = "lbl1", 
-			label = "Hint: use a marker stick to determine the door position", 
-		},
-		{
 			type = "textlist", 
 			name = "state",
 			label = "set",      
 			choices = "open,close", 
 			default = 1,
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: use a marker stick to determine the door position", 
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
@@ -367,6 +400,92 @@ smartline.register_action("doors open/close", {
 	end,
 	button_label = function(data) 
 		return "door("..data.state.text..")"
+	end,
+})
+
+smartline.register_condition("detected player name", {
+	formspec = {
+		{
+			type = "field",
+			name = "number",
+			label = "name from player detector with number",
+			default = "",
+		},
+		{
+			type = "field",
+			name = "name",
+			label = "is",
+			default = "",
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: use a '*' character for all player names", 
+		},
+	},
+	
+	on_execute = function(data, flags, timers, inputs, actions) 
+		flags.name = tubelib.send_request(data.number, "name", nil)
+		print("flags.name", flags.name)
+		return (data.name == "*" and flags.name ~= "") or flags.name == data.name
+	end,
+	button_label = function(data) 
+		if string.len(data.name) > 6 then
+			return "name=="..string.sub(data.name, 1, 6).."."
+		end
+		return "name=="..data.name
+	end,
+})
+
+smartline.register_action("output player name", {
+	formspec = {
+		{
+			type = "field", 
+			name = "number", 
+			label = "output to Display with number", 
+			default = "",
+		},
+		{
+			type = "field", 
+			name = "text",
+			label = "the following text",      
+			default = "",
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: use a '*' character as reference to the player name", 
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		local text = string.gsub(data.text, "*", flags.name)
+		tubelib.send_message(data.number, data.owner, nil, "row", text)
+	end,
+	button_label = function(data) 
+		return "dispay(<name>)"
+	end,
+})
+
+smartline.register_condition("action", {
+	formspec = {
+		{
+			type = "textlist", 
+			name = "action",
+			label = "action is executed",      
+			choices = "a1,a2,a3,a4,a5,a6,a7,a8,a9,a10", 
+			default = 1,
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: The corresponding flag is set for each\nexecute action. Useful to execute\nmore than one action with one condition.", 
+		},
+	},
+	on_execute = function(data, flags, timers, inputs, actions) 
+		return actions[data.action.num] == true
+	end,
+	button_label = function(data) 
+		return "action"..data.action.num
 	end,
 })
 

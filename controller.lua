@@ -36,16 +36,16 @@ Actions are:
  - set timer variables 
  - set/reset flag variables
  
-The controller supports 8 timers (resolution in seconds) 
-and 8 flags (can be set true/false)
+Variables and timers: 
+ - 8 flags (set/reset) can be used to store conditions 
+    for later use. These flags are stored permanently.
+ - Action flags (id set with each executed action)
+    can be used as condition for subsequent rules.
+	Action flags are cleared after each controller run.
+ - 8 timers (resolution in seconds) can be use
+   for delayed actions. 
 
-Each Rule stands for its own, but flags can be used 
-to store conditions for subsequent rules.
 The controller executes all rules once per second. 
-All flags are cleared after each run.
-Timers can be used to trigger rules on subsequent 
-controller runs.
-
 All actions are only executed once. The conditions
 has to become false and then true again, to trigger
 the action again.
@@ -57,6 +57,8 @@ Edit command examples:
  - 'x 1 8'  exchange rows 1 with row 8
  - 'c 1 2'  copy row 1 to 2
  - 'd 3'    delete row 3
+
+For more information, see: goo.gl/wZ5GUR
 ]]
 
 local sOUTPUT = "Press 'help' for edit commands" 
@@ -106,8 +108,8 @@ local CondRunTimeHandlers = {}
 local ActnRunTimeHandlers = {}
 
 
-local function eval_cond(data, flags, timers, inputs)
-	return CondRunTimeHandlers[data.__idx__](data, flags, timers, inputs) and 1 or 0
+local function eval_cond(data, flags, timers, inputs, actions)
+	return CondRunTimeHandlers[data.__idx__](data, flags, timers, inputs, actions) and 1 or 0
 end
 
 local function exec_action(data, flags, timers, number)
@@ -219,17 +221,18 @@ local function add_controls_to_table(tbl, postfix, fs_data, fs_definition)
 	local val = ""
 	local offs = 2.4
 	for idx,elem in ipairs(fs_definition.formspec) do
-		tbl[#tbl+1] = "label[0,"..offs..";"..elem.label..":]"
+		if elem.label then
+			tbl[#tbl+1] = "label[0,"..offs..";"..elem.label.."]"
+			offs = offs + 0.5
+		end
 		if elem.type == "field" then
 			val = fs_data["subm"..postfix.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "field[0.3,"..(offs+0.7)..";8.2,1;"..elem.name..";;"..val.."]"
-			offs = offs + 1.5
+			tbl[#tbl+1] = "field[0.3,"..(offs+0.2)..";8.2,1;"..elem.name..";;"..val.."]"
+			offs = offs + 0.9
 		elseif elem.type == "textlist" then
 			val = fs_data["subm"..postfix.."_"..elem.name] or elem.default
-			tbl[#tbl+1] = "textlist[0.0,"..(offs+0.5)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
-			offs = offs + 2.4
-		elseif elem.type == "label" then
-			offs = offs + 0.6
+			tbl[#tbl+1] = "textlist[0.0,"..(offs)..";8,1.4;"..elem.name..";"..elem.choices..";"..val.."]"
+			offs = offs + 1.8
 		end
 	end
 	return tbl
@@ -263,7 +266,8 @@ local function formspec_cond(_postfix_, fs_data)
 	tbl[#tbl+1] = "label[0,0.1;Condition type:]"
 	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;cond;"..sConditions..";"..cond_idx.."]"
 	tbl = add_controls_to_table(tbl, _postfix_, fs_data, fs_definition)
-	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
+	tbl[#tbl+1] = "button[4,9.4;2,1;_cancel_;cancel]"
+	tbl[#tbl+1] = "button[6,9.4;2,1;_exit_;ok]"
 	return table.concat(tbl)
 end
 
@@ -305,7 +309,8 @@ local function formspec_actn(_postfix_, fs_data)
 	tbl[#tbl+1] = "label[0,0.1;Action type:]"
 	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;actn;"..sActions..";"..actn_idx.."]"
 	tbl = add_controls_to_table(tbl, _postfix_, fs_data, fs_definition)
-	tbl[#tbl+1] = "button[6,9.4;1.5,1;_exit_;ok]"
+	tbl[#tbl+1] = "button[4,9.4;2,1;_cancel_;cancel]"
+	tbl[#tbl+1] = "button[6,9.4;2,1;_exit_;ok]"
 	return table.concat(tbl)
 end
 
@@ -326,6 +331,9 @@ local function eval_formspec_actn(meta, fs_data, fields)
 	if fields._exit_ == nil then
 		-- update formspec if exit is not pressed
 		meta:set_string("formspec", formspec_actn(fields._postfix_, fs_data))
+	end
+	if fields._cancel_ then
+		fields._exit_ = true
 	end
 	return fs_data
 end
@@ -419,6 +427,7 @@ end
 
 local function eval_formspec_main(meta, fs_data, fields)
 	--print("main", dump(fields))
+	meta:set_string("fs_old", minetest.serialize(fs_data))
 	for idx = 1,NUM_RULES do
 		-- eval standard inputs
 		fs_data["oprnd"..idx] = fields["oprnd"..idx] or fs_data["oprnd"..idx]
@@ -454,35 +463,41 @@ end
 local function execute(meta, number, debug)
 	--print("elapsed", elapsed)
 	local rt_rules = tubelib.get_data(number, "rt_rules")
-	local inputs = tubelib.get_data(number, "inputs")
-	local actions = tubelib.get_data(number, "actions")
-	local timers = tubelib.get_data(number, "timers")
+	local inputs = tubelib.get_data(number, "inputs") or {}
+	local act_gate = tubelib.get_data(number, "act_gate") or {}
+	local timers = tubelib.get_data(number, "timers") or {}
+	local flags = tubelib.get_data(number, "flags") or {}
 	decrement_timers(timers)
-	local flags = {}
+	local actions = {}
 	for i,item in ipairs(rt_rules) do
-		if eval_cond(item.cond1, flags, timers, inputs) + eval_cond(item.cond2, flags, timers, inputs) >= item.cond_cnt then
+		if eval_cond(item.cond1, flags, timers, inputs, actions) + eval_cond(item.cond2, flags, timers, inputs, actions) >= item.cond_cnt then
 			--print("exec rule", i)
-			if actions[i] == false then
+			if act_gate[i] == false then
 				-- execute action
 				exec_action(item.actn, flags, timers, number)
+				actions[i] = true
 			end
-			actions[i] = true
+			act_gate[i] = true
 		else
-			actions[i] = false
+			act_gate[i] = false
 		end
 	end
-	tubelib.set_data(number, "rt_rules", rt_rules)
+	--tubelib.set_data(number, "rt_rules", rt_rules)
 	tubelib.set_data(number, "inputs", {})
-	tubelib.set_data(number, "actions", actions)
+	tubelib.set_data(number, "act_gate", act_gate)
+	tubelib.set_data(number, "timers", timers)
+	tubelib.set_data(number, "flags", flags)
 end
 
 local function check_rules(pos, elapsed)
+	--local t = minetest.get_us_time()
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
 	local state = meta:get_int("state")
 	if state == tubelib.RUNNING and number then
 		execute(meta, number, debug)
 	end
+	--print("time", minetest.get_us_time() - t)
 	return true
 end
 
@@ -501,9 +516,10 @@ local function switch_state(pos, state, fs_data)
 end
 
 local function start_controller(pos, number, fs_data)
-	tubelib.set_data(number, "timers", create_arr(0, NUM_RULES))  -- local timers
-	tubelib.set_data(number, "inputs", {}) 	-- for rx commands
-	tubelib.set_data(number, "actions", create_arr(false, NUM_RULES))  -- for action states
+	--tubelib.set_data(number, "timers", create_arr(0, NUM_RULES))  -- local timers
+	--tubelib.set_data(number, "inputs", {}) 	-- for rx commands
+	--tubelib.set_data(number, "flags", , create_arr(0, NUM_RULES))  -- to store conditions
+	--tubelib.set_data(number, "act_gate", create_arr(false, NUM_RULES))  -- for action states
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
 
@@ -626,6 +642,10 @@ local function 	on_receive_fields(pos, formname, fields, player)
 	elseif fields._type_ == "actn" then
 		fs_data = eval_formspec_actn(meta, fs_data, fields)
 	elseif fields._type_ == "help" then
+		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
+	end
+	if fields._cancel_ then
+		fs_data = minetest.deserialize(meta:get_string("fs_old"))
 		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
 	end
 	meta:set_string("fs_data", minetest.serialize(fs_data))
