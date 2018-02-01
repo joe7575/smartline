@@ -11,7 +11,7 @@
 	History:
 	2018-01-01  v0.01  first version
 	2018-01-26  v0.02  timer and sequencer added
-
+	2018-02-01  v0.03  further commands, hints and cancel button aded
 
 ]]--
 
