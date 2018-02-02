@@ -343,7 +343,6 @@ end
 -- Label text formspec
 --
 local function formspec_label(_postfix_, fs_data)
-	--print(dump(fs_data))
 	local label = fs_data["label".._postfix_] or "<any text>"
 	return "size[6,4]"..
 		default.gui_bg..
@@ -358,7 +357,6 @@ end
 
 -- evaluate the row label
 local function eval_formspec_label(meta, fs_data, fields)
-	--print("label", dump(fields))
 	fs_data["subml"..fields._postfix_.."_label"] = fields.label
 	if fields._exit_ == nil then
 		meta:set_string("formspec", formspec_label(fields._postfix_, fs_data))
@@ -387,7 +385,6 @@ end
 
 -- evaluate the row operand
 local function eval_formspec_oprnd(meta, fs_data, fields)
-	--print("label", dump(fields))
 	local oprnd = minetest.explode_textlist_event(fields.oprnd)
 	if oprnd.type == "CHG" then
 		fs_data["submo"..fields._postfix_.."_oprnd"] = oprnd.index
@@ -426,7 +423,6 @@ local function formspec_main(state, fs_data, output)
 end
 
 local function eval_formspec_main(meta, fs_data, fields)
-	--print("main", dump(fields))
 	meta:set_string("fs_old", minetest.serialize(fs_data))
 	for idx = 1,NUM_RULES do
 		-- eval standard inputs
@@ -461,7 +457,6 @@ local function formspec_help(offs)
 end
 
 local function execute(meta, number, debug)
-	--print("elapsed", elapsed)
 	local rt_rules = tubelib.get_data(number, "rt_rules")
 	local inputs = tubelib.get_data(number, "inputs") or {}
 	local act_gate = tubelib.get_data(number, "act_gate") or {}
@@ -471,15 +466,14 @@ local function execute(meta, number, debug)
 	local actions = {}
 	for i,item in ipairs(rt_rules) do
 		if eval_cond(item.cond1, flags, timers, inputs, actions) + eval_cond(item.cond2, flags, timers, inputs, actions) >= item.cond_cnt then
-			--print("exec rule", i)
-			if act_gate[i] == false then
+			if act_gate[i] == nil then
 				-- execute action
 				exec_action(item.actn, flags, timers, number)
 				actions[i] = true
 			end
 			act_gate[i] = true
 		else
-			act_gate[i] = false
+			act_gate[i] = nil
 		end
 	end
 	--tubelib.set_data(number, "rt_rules", rt_rules)
@@ -516,10 +510,10 @@ local function switch_state(pos, state, fs_data)
 end
 
 local function start_controller(pos, number, fs_data)
-	--tubelib.set_data(number, "timers", create_arr(0, NUM_RULES))  -- local timers
-	--tubelib.set_data(number, "inputs", {}) 	-- for rx commands
-	--tubelib.set_data(number, "flags", , create_arr(0, NUM_RULES))  -- to store conditions
-	--tubelib.set_data(number, "act_gate", create_arr(false, NUM_RULES))  -- for action states
+	tubelib.set_data(number, "timers",   {})  -- local timers
+	tubelib.set_data(number, "inputs",   {})  -- for rx commands
+	tubelib.set_data(number, "flags",    {})  -- to store conditions
+	tubelib.set_data(number, "act_gate", {})  -- for action states
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
 
@@ -546,7 +540,6 @@ local function formspec2runtime_rule(number, owner, fs_data)
 		end
 	end 
 	tubelib.set_data(number, "rt_rules", rt_rules)
-	print("rt_rules", dump(rt_rules))
 end
 
 
@@ -616,7 +609,6 @@ local function edit_command(fs_data, text)
 end
 
 local function 	on_receive_fields(pos, formname, fields, player)
-	print("fields", dump(fields))
 	local meta = minetest.get_meta(pos)
 	local owner = meta:get_string("owner")
 	if not player or not player:is_player() then

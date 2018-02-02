@@ -137,7 +137,7 @@ smartline.register_condition("check input", {
 })
 
 
-smartline.register_condition("timer test", {
+smartline.register_condition("timer expired", {
 	formspec = {
 		{
 			type = "textlist", 
@@ -295,7 +295,7 @@ smartline.register_action("switch nodes on/off", {
 	end,
 })
 
-smartline.register_action("Display", {
+smartline.register_action("Display: add one line", {
 	formspec = {
 		{
 			type = "field", 
@@ -311,7 +311,7 @@ smartline.register_action("Display", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		tubelib.send_message(data.number, data.owner, nil, "row", data.text)
+		tubelib.send_message(data.number, data.owner, nil, "text", data.text)
 	end,
 	button_label = function(data) 
 		return "dispay("..data.number..")"
@@ -356,15 +356,12 @@ smartline.register_action("chat", {
 
 local function door_toggle(pos, owner, state)
 	pos = minetest.string_to_pos("("..pos..")")
-	print("pos", dump(pos))
 	if pos then
 		local door = doors.get(pos)
-		print("door", dump(door))
 		if door then
 			local player = {
 				get_player_name = function() return owner end,
 			}
-			print("player", dump(player))
 			if state == "open" then
 				door:open(player)
 			elseif state == "close" then
@@ -379,7 +376,7 @@ smartline.register_action("doors open/close", {
 		{
 			type = "field", 
 			name = "pos", 
-			label = "door position like '123,7,-1200'", 
+			label = "door position like: 123,7,-1200", 
 			default = "",
 		},
 		{
@@ -391,7 +388,12 @@ smartline.register_action("doors open/close", {
 		},
 		{
 			type = "label", 
-			name = "lbl", 
+			name = "lbl1", 
+			label = "For standard doors like the Steel Door", 
+		},
+		{
+			type = "label", 
+			name = "lbl2", 
 			label = "Hint: use a marker stick to determine the door position", 
 		},
 	},
@@ -426,7 +428,6 @@ smartline.register_condition("detected player name", {
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
 		flags.name = tubelib.send_request(data.number, "name", nil)
-		print("flags.name", flags.name)
 		return (data.name == "*" and flags.name ~= "") or flags.name == data.name
 	end,
 	button_label = function(data) 
@@ -437,7 +438,7 @@ smartline.register_condition("detected player name", {
 	end,
 })
 
-smartline.register_action("output player name", {
+smartline.register_action("Display: player name", {
 	formspec = {
 		{
 			type = "field", 
@@ -486,6 +487,37 @@ smartline.register_condition("action", {
 	end,
 	button_label = function(data) 
 		return "action"..data.action.num
+	end,
+})
+
+smartline.register_action("Display: overwrite one line", {
+	formspec = {
+		{
+			type = "field", 
+			name = "number", 
+			label = "output to Display with number", 
+			default = "",
+		},
+		{
+			type = "textlist", 
+			name = "row", 
+			label = "Display line", 
+			choices = "1,2,3,4,5,6,7,8,9", 
+			default = 1,
+		},
+		{
+			type = "field", 
+			name = "text",
+			label = "the following text",      
+			default = "",
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		local payload = {row = data.row.num, str = data.text}
+		tubelib.send_message(data.number, data.owner, nil, "row", payload)
+	end,
+	button_label = function(data) 
+		return "dispay("..data.number..")"
 	end,
 })
 

@@ -78,7 +78,7 @@ minetest.register_craft({
 	},
 })
 
-local function add_row(meta, payload)
+local function add_line(meta, payload)
 	local text = meta:get_string("text")
 	local rows
 	if meta:get_int("startscreen") == 1 then
@@ -95,18 +95,41 @@ local function add_row(meta, payload)
 	meta:set_string("text", text)
 end
 
+local function write_row(meta, payload)
+	local text = meta:get_string("text")
+	if type(payload) == "table" then
+		local row = tonumber(payload.row) or 1
+		local str = payload.str or "oops"
+		local rows
+		if meta:get_int("startscreen") == 1 then
+			rows = {}
+			meta:set_int("startscreen", 0)
+		else
+			rows = string.split(text, "|")
+		end
+		if #rows < 9 then
+			for i = #rows, 9 do
+				table.insert(rows, " ")
+			end
+		end
+		rows[row] = str
+		text = table.concat(rows, "|")
+		meta:set_string("text", text)
+	end
+end
+
 tubelib.register_node("smartline:display", {}, {
 	on_recv_message = function(pos, topic, payload)
 		local node = minetest.get_node(pos)
-		if topic == "text" then
+		if topic == "text" then  -- add one line and scroll if necessary
 			local meta = minetest.get_meta(pos)
-			meta:set_string("text", payload)
+			add_line(meta, payload)
 			display_lib.update_entities(pos)
-		elseif topic == "row" then
+		elseif topic == "row" then  -- overwrite the given row
 			local meta = minetest.get_meta(pos)
-			add_row(meta, payload)
+			write_row(meta, payload)
 			display_lib.update_entities(pos)
-		elseif topic == "clear" then
+		elseif topic == "clear" then  -- clear the screen
 			local meta = minetest.get_meta(pos)
 			meta:set_string("text", "")
 			display_lib.update_entities(pos)
