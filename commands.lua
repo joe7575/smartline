@@ -14,13 +14,15 @@
 
 ]]--
 
-smartline.register_condition("", {
+smartline.register_condition("default", {
+	title = "",
 	formspec = {},
 	on_execute = function(data, flags, timers, inputs, actions) end,
 	button_label = function(data) return ""	end,
 })
 
 smartline.register_action("", {
+	title = "",
 	formspec = {},
 	on_execute = function(data, flags, timers, inputs) end,
 	button_label = function(data) return ""	end,
@@ -28,6 +30,7 @@ smartline.register_action("", {
 
 
 smartline.register_condition("true", {
+	title = "true",
 	formspec = {},
 	on_execute = function(data, flags, timers, inputs, actions) 
 		return true
@@ -38,6 +41,7 @@ smartline.register_condition("true", {
 })
 
 smartline.register_condition("false", {
+	title = "false",
 	formspec = {},
 	on_execute = function(data, flags, timers, inputs, actions) 
 		return false
@@ -47,7 +51,8 @@ smartline.register_condition("false", {
 	end,
 })
 
-smartline.register_condition("flag test", {
+smartline.register_condition("flag", {
+	title = "flag test",
 	formspec = {
 		{
 			type = "textlist", 
@@ -77,7 +82,8 @@ smartline.register_condition("flag test", {
 	end,
 })
 
-smartline.register_action("flag set", {
+smartline.register_action("flag", {
+	title = "flag set",
 	formspec = {
 		{
 			type = "textlist", 
@@ -107,7 +113,8 @@ smartline.register_action("flag set", {
 	end,
 })
 
-smartline.register_condition("check input", {
+smartline.register_condition("input", {
+	title = "check input",
 	formspec = {
 		{
 			type = "field",
@@ -137,7 +144,8 @@ smartline.register_condition("check input", {
 })
 
 
-smartline.register_condition("timer expired", {
+smartline.register_condition("timer", {
+	title = "timer expired",
 	formspec = {
 		{
 			type = "textlist", 
@@ -155,7 +163,8 @@ smartline.register_condition("timer expired", {
 	end,
 })
 
-smartline.register_action("timer start", {
+smartline.register_action("timer", {
+	title = "timer start",
 	formspec = {
 		{
 			type = "textlist", 
@@ -179,7 +188,8 @@ smartline.register_action("timer start", {
 	end,
 })
 
-smartline.register_condition("Pusher state", {
+smartline.register_condition("pusher", {
+	title = "Pusher state",
 	formspec = {
 		{
 			type = "field",
@@ -209,7 +219,8 @@ smartline.register_condition("Pusher state", {
 	end,
 })
 
-smartline.register_condition("fuel state", {
+smartline.register_condition("fuel", {
+	title = "fuel state",
 	formspec = {
 		{
 			type = "field",
@@ -242,7 +253,8 @@ smartline.register_condition("fuel state", {
 	end,
 })
 
-smartline.register_action("Signal Tower command", {
+smartline.register_action("signaltower", {
+	title = "Signal Tower command",
 	formspec = {
 		{
 			type = "field", 
@@ -266,7 +278,8 @@ smartline.register_action("Signal Tower command", {
 	end,
 })
 
-smartline.register_action("switch nodes on/off", {
+smartline.register_action("switch", {
+	title = "switch nodes on/off",
 	formspec = {
 		{
 			type = "field", 
@@ -295,7 +308,8 @@ smartline.register_action("switch nodes on/off", {
 	end,
 })
 
-smartline.register_action("Display: add one line", {
+smartline.register_action("display1", {
+	title = "Display: add one line",
 	formspec = {
 		{
 			type = "field", 
@@ -318,8 +332,71 @@ smartline.register_action("Display: add one line", {
 	end,
 })
 
+smartline.register_action("display2", {
+	title = "Display: overwrite one line",
+	formspec = {
+		{
+			type = "field", 
+			name = "number", 
+			label = "output to Display with number", 
+			default = "",
+		},
+		{
+			type = "textlist", 
+			name = "row", 
+			label = "Display line", 
+			choices = "1,2,3,4,5,6,7,8,9", 
+			default = 1,
+		},
+		{
+			type = "field", 
+			name = "text",
+			label = "the following text",      
+			default = "",
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		local payload = {row = data.row.num, str = data.text}
+		tubelib.send_message(data.number, data.owner, nil, "row", payload)
+	end,
+	button_label = function(data) 
+		return "dispay("..data.number..")"
+	end,
+})
+
+smartline.register_action("display3", {
+	title = "Display: player name",
+	formspec = {
+		{
+			type = "field", 
+			name = "number", 
+			label = "output to Display with number", 
+			default = "",
+		},
+		{
+			type = "field", 
+			name = "text",
+			label = "the following text",      
+			default = "",
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: use a '*' character as reference to the player name", 
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		local text = string.gsub(data.text, "*", flags.name)
+		tubelib.send_message(data.number, data.owner, nil, "row", text)
+	end,
+	button_label = function(data) 
+		return "dispay(<name>)"
+	end,
+})
+
 if minetest.get_modpath("mail") and mail ~= nil then
 	smartline.register_action("mail", {
+		title = "mail",
 		formspec = {
 			{
 				type = "field", 
@@ -338,6 +415,7 @@ if minetest.get_modpath("mail") and mail ~= nil then
 end
 
 smartline.register_action("chat", {
+	title = "chat",
 	formspec = {
 		{
 			type = "field", 
@@ -371,7 +449,8 @@ local function door_toggle(pos, owner, state)
 	end
 end
 
-smartline.register_action("doors open/close", {
+smartline.register_action("door", {
+	title = "doors open/close",
 	formspec = {
 		{
 			type = "field", 
@@ -405,7 +484,8 @@ smartline.register_action("doors open/close", {
 	end,
 })
 
-smartline.register_condition("detected player name", {
+smartline.register_condition("playerdetector", {
+	title = "detected player name",
 	formspec = {
 		{
 			type = "field",
@@ -438,36 +518,8 @@ smartline.register_condition("detected player name", {
 	end,
 })
 
-smartline.register_action("Display: player name", {
-	formspec = {
-		{
-			type = "field", 
-			name = "number", 
-			label = "output to Display with number", 
-			default = "",
-		},
-		{
-			type = "field", 
-			name = "text",
-			label = "the following text",      
-			default = "",
-		},
-		{
-			type = "label", 
-			name = "lbl", 
-			label = "Hint: use a '*' character as reference to the player name", 
-		},
-	},
-	on_execute = function(data, flags, timers, number) 
-		local text = string.gsub(data.text, "*", flags.name)
-		tubelib.send_message(data.number, data.owner, nil, "row", text)
-	end,
-	button_label = function(data) 
-		return "dispay(<name>)"
-	end,
-})
-
 smartline.register_condition("action", {
+	title = "action",
 	formspec = {
 		{
 			type = "textlist", 
@@ -487,37 +539,6 @@ smartline.register_condition("action", {
 	end,
 	button_label = function(data) 
 		return "action"..data.action.num
-	end,
-})
-
-smartline.register_action("Display: overwrite one line", {
-	formspec = {
-		{
-			type = "field", 
-			name = "number", 
-			label = "output to Display with number", 
-			default = "",
-		},
-		{
-			type = "textlist", 
-			name = "row", 
-			label = "Display line", 
-			choices = "1,2,3,4,5,6,7,8,9", 
-			default = 1,
-		},
-		{
-			type = "field", 
-			name = "text",
-			label = "the following text",      
-			default = "",
-		},
-	},
-	on_execute = function(data, flags, timers, number) 
-		local payload = {row = data.row.num, str = data.text}
-		tubelib.send_message(data.number, data.owner, nil, "row", payload)
-	end,
-	button_label = function(data) 
-		return "dispay("..data.number..")"
 	end,
 })
 

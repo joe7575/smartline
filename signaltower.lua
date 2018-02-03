@@ -14,11 +14,15 @@
 
 
 local function switch_on(pos, node, color)
+	local meta = minetest.get_meta(pos)
+	meta:set_string("state", color)
 	node.name = "smartline:signaltower_"..color
 	minetest.swap_node(pos, node)
 end	
 
 local function switch_off(pos, node)
+	local meta = minetest.get_meta(pos)
+	meta:set_string("state", "off")
 	node.name = "smartline:signaltower"
 	minetest.swap_node(pos, node)
 end	
@@ -42,6 +46,7 @@ minetest.register_node("smartline:signaltower", {
 	after_place_node = function(pos, placer)
 		local number = tubelib.add_node(pos, "smartline:signaltower")
 		local meta = minetest.get_meta(pos)
+		meta:set_string("state", "off")
 		meta:set_string("infotext", "SmartLine Signal Tower "..number)
 	end,
 
@@ -120,6 +125,9 @@ tubelib.register_node("smartline:signaltower", {
 			switch_on(pos, node, "red")
 		elseif topic == "off" then
 			switch_off(pos, node)
+		elseif topic == "state" then
+			local meta = minetest.get_meta(pos)
+			return meta:get_string("state")
 		end
 	end,
 })		

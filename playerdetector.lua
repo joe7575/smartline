@@ -64,7 +64,7 @@ local function formspec_help()
 		"label[0,1;Input the number(s) of the receiving node(s).\n"..
 		"Separate numbers via blanks, like '0123 0234'.\n\n"..
 		"Input the player name(s) separated by blanks,\nor empty for all players.]"..
-		"button[4,8;2,1;exit;close]"
+		"button_exit[4,8;2,1;exit;close]"
 end
 
 
@@ -77,7 +77,7 @@ local function formspec(numbers, names)
 		"field[0.3,1;8,1;numbers;Receiver node numbers:;"..numbers.."]" ..
 		"field[0.3,2.5;8,1;names;Player name(s):;"..names.."]" ..
 		"button_exit[5,3.5;2,1;exit;Save]"..
-		"button[1,3.5;1,1;help;help;]"
+		"button_exit[1,3.5;1,1;help;help;]"
 end
 
 local function on_receive_fields(pos, formname, fields, player)

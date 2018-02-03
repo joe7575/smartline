@@ -96,12 +96,16 @@ end
 --
 
 -- tables with all data from condition/action registrations
-local kvRegisteredConditions = {}
-local kvRegisteredActions = {}
+local kvRegisteredCond = {}
+local kvRegisteredActn = {}
 
--- lookup table to get the key behind the textlist index
-local aConditionTypes = {}
-local aActionTypes = {}
+-- list of keys for conditions/actions
+local aCondTypes = {}
+local aActnTypes = {}
+
+-- list of titles for conditions/actions
+local aCondTitles = {}
+local aActnTitles = {}
 
 -- table with runtime functions
 local CondRunTimeHandlers = {}
@@ -121,11 +125,16 @@ smartline = {}
 --
 -- API functions for condition/action registrations
 --
-function smartline.register_condition(name, tData)
+function smartline.register_condition(key, tData)
 	table.insert(CondRunTimeHandlers, tData.on_execute)
-	table.insert(aConditionTypes, name)
-	tData.__idx__ = #aConditionTypes
-	kvRegisteredConditions[name] = tData
+	table.insert(aCondTypes, key)
+	table.insert(aCondTitles, tData.title)
+	tData.__idx__ = #aCondTypes
+	if kvRegisteredCond[key] ~= nil then
+		print("[SmartLine] Condition registration error "..key)
+		return
+	end
+	kvRegisteredCond[key] = tData
 	for _,item in ipairs(tData.formspec) do
 		if item.type == "textlist" then
 			item.tChoices = string.split(item.choices, ",")
@@ -134,11 +143,16 @@ function smartline.register_condition(name, tData)
 	end
 end
 
-function smartline.register_action(name, tData)
+function smartline.register_action(key, tData)
 	table.insert(ActnRunTimeHandlers, tData.on_execute)
-	table.insert(aActionTypes, name)
-	tData.__idx__ = #aActionTypes
-	kvRegisteredActions[name] = tData
+	table.insert(aActnTypes, key)
+	table.insert(aActnTitles, tData.title)
+	tData.__idx__ = #aActnTypes
+	if kvRegisteredActn[key] ~= nil then
+		print("[SmartLine] Action registration error "..key)
+		return
+	end
+	kvRegisteredActn[key] = tData
 	for _,item in ipairs(tData.formspec) do
 		if item.type == "textlist" then
 			item.tChoices = string.split(item.choices, ",")
@@ -157,18 +171,17 @@ end
 -- postfix: row/culumn info like "11" or "a2"
 -- type: "cond" or "actn"
 -- fs_data: formspec data
-
 local function get_active_subm_definition(postfix, type, fs_data)
 	local idx = 1
 	local fs_definition = {}
 	if type == "cond" then
 		idx = fs_data["subm"..postfix.."_cond"] or 1
-		local key = aConditionTypes[idx]
-		fs_definition = kvRegisteredConditions[key]
+		local key = aCondTypes[idx]
+		fs_definition = kvRegisteredCond[key]
 	elseif type == "actn" then
 		idx = fs_data["subm"..postfix.."_actn"] or 1
-		local key = aActionTypes[idx]
-		fs_definition = kvRegisteredActions[key]
+		local key = aActnTypes[idx]
+		fs_definition = kvRegisteredActn[key]
 	end
 	return idx, fs_definition
 end
@@ -261,7 +274,7 @@ local function formspec_cond(_postfix_, fs_data)
 		"field[0,0;0,0;_type_;;cond]"..
 		"field[0,0;0,0;_postfix_;;".._postfix_.."]"}
 	
-	local sConditions = table.concat(aConditionTypes, ",")
+	local sConditions = table.concat(aCondTitles, ",")
 	local cond_idx, fs_definition = get_active_subm_definition(_postfix_, "cond", fs_data)
 	tbl[#tbl+1] = "label[0,0.1;Condition type:]"
 	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;cond;"..sConditions..";"..cond_idx.."]"
@@ -304,7 +317,7 @@ local function formspec_actn(_postfix_, fs_data)
 		"field[0,0;0,0;_type_;;actn]"..
 		"field[0,0;0,0;_postfix_;;".._postfix_.."]"}
 	
-	local sActions = table.concat(aActionTypes, ",")
+	local sActions = table.concat(aActnTitles, ",")
 	local actn_idx, fs_definition = get_active_subm_definition(_postfix_, "actn", fs_data)
 	tbl[#tbl+1] = "label[0,0.1;Action type:]"
 	tbl[#tbl+1] = "textlist[0,0.6;8,1.4;actn;"..sActions..";"..actn_idx.."]"
@@ -608,7 +621,7 @@ local function edit_command(fs_data, text)
 	return "Invalid command '"..text.."'"
 end
 
-local function 	on_receive_fields(pos, formname, fields, player)
+local function on_receive_fields(pos, formname, fields, player)
 	local meta = minetest.get_meta(pos)
 	local owner = meta:get_string("owner")
 	if not player or not player:is_player() then
@@ -664,7 +677,6 @@ local function 	on_receive_fields(pos, formname, fields, player)
 			start_controller(pos, number, fs_data)
 			meta:set_string("formspec", formspec_main(tubelib.RUNNING, fs_data, sOUTPUT))
 		end
-		
 	end
 end
 
@@ -768,3 +780,87 @@ tubelib.register_node("smartline:controller", {}, {
 		end
 	end,
 })		
+
+local tCondOrder = {
+	"",
+	"true",
+	"false",
+	"flag",
+	"input",
+	"timer",
+	"pusher",
+	"fuel",
+	"playerdetector",
+	"action",
+}
+
+local tActnOrder = {
+	"",
+	"flag",
+	"timer",
+	"signaltower",
+	"switch",
+	"display1",
+	"display2",
+	"display3",
+	"mail",
+	"chat",
+	"door",
+}
+
+
+-- List of Controller actions and conditions is dependent on loaded mods.
+-- Therefore, the order of actions and conditions has to be re-assembled each time.
+local tOld2NewCond = {}
+local tOld2NewActn = {}
+-- last order is stored from last run
+local storage = minetest.get_mod_storage()
+
+local function old_to_new(newTypes, oldTypes)
+	local res = {}
+	local new = create_kv_list(newTypes)
+	for idx,key in ipairs(oldTypes) do
+		res[idx] = new[key] or 1
+	end
+	return res
+end
+
+local function update_database()
+	local aOldCondTypes = minetest.deserialize(storage:get_string("aCondTypes")) or tCondOrder
+	local aOldActnTypes = minetest.deserialize(storage:get_string("aActnTypes")) or tActnOrder
+
+	tOld2NewCond = old_to_new(aCondTypes, aOldCondTypes)
+	tOld2NewActn = old_to_new(aActnTypes, aOldActnTypes)
+
+	storage:set_string("aCondTypes", minetest.serialize(aCondTypes))
+	storage:set_string("aActnTypes", minetest.serialize(aActnTypes))
+end
+
+minetest.register_lbm({
+	label = "[SmartLine] Controller update",
+	name = "smartline:update",
+	nodenames = {"smartline:controller"},
+	run_at_every_load = true,
+	action = function(pos, node)
+		local meta = minetest.get_meta(pos)
+		local fs_data = minetest.deserialize(meta:get_string("fs_data"))
+	
+		if #tOld2NewCond == 0 then  -- not updated so far?
+			update_database()
+		end
+		-- map from old to new indexes
+		for idx = 1,NUM_RULES do
+			fs_data["subm1"..idx.."_cond"] = tOld2NewCond[fs_data["subm1"..idx.."_cond"]]
+			fs_data["subm2"..idx.."_cond"] = tOld2NewCond[fs_data["subm2"..idx.."_cond"]]
+			fs_data["subma"..idx.."_actn"] = tOld2NewActn[fs_data["subma"..idx.."_actn"]]
+		end
+		
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+		--print("aOldCondTypes", dump(aOldCondTypes))
+		--print("aOldActnTypes", dump(aOldActnTypes))
+		--print("tOld2NewCond", dump(tOld2NewCond))
+		--print("tOld2NewActn", dump(tOld2NewActn))
+		--print("fs_data", dump(fs_data))
+	end
+})
+
