@@ -77,7 +77,7 @@ local function formspec(numbers, names)
 		"field[0.3,1;8,1;numbers;Receiver node numbers:;"..numbers.."]" ..
 		"field[0.3,2.5;8,1;names;Player name(s):;"..names.."]" ..
 		"button_exit[5,3.5;2,1;exit;Save]"..
-		"button_exit[1,3.5;1,1;help;help;]"
+		"button[1,3.5;1,1;help;help]"
 end
 
 local function on_receive_fields(pos, formname, fields, player)
