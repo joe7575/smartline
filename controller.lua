@@ -781,43 +781,16 @@ tubelib.register_node("smartline:controller", {}, {
 	end,
 })		
 
-local tCondOrder = {
-	"",
-	"true",
-	"false",
-	"flag",
-	"input",
-	"timer",
-	"pusher",
-	"fuel",
-	"playerdetector",
-	"action",
-}
-
-local tActnOrder = {
-	"",
-	"flag",
-	"timer",
-	"signaltower",
-	"switch",
-	"display1",
-	"display2",
-	"display3",
-	"mail",
-	"chat",
-	"door",
-}
-
-
 -- List of Controller actions and conditions is dependent on loaded mods.
 -- Therefore, the order of actions and conditions has to be re-assembled each time.
-local tOld2NewCond = {}
-local tOld2NewActn = {}
--- last order is stored from last run
+-- last order from last run is stored as meta data 
 local storage = minetest.get_mod_storage()
 
 local function old_to_new(newTypes, oldTypes)
 	local res = {}
+	if #oldTypes == 0 then
+		return nil
+	end
 	local new = create_kv_list(newTypes)
 	for idx,key in ipairs(oldTypes) do
 		res[idx] = new[key] or 1
@@ -825,15 +798,17 @@ local function old_to_new(newTypes, oldTypes)
 	return res
 end
 
-local function update_database()
-	local aOldCondTypes = minetest.deserialize(storage:get_string("aCondTypes")) or tCondOrder
-	local aOldActnTypes = minetest.deserialize(storage:get_string("aActnTypes")) or tActnOrder
+local function update_node_database(meta)
+	local aOldCondTypes = minetest.deserialize(meta:get_string("aCondTypes")) or {}
+	local aOldActnTypes = minetest.deserialize(meta:get_string("aActnTypes")) or {}
 
-	tOld2NewCond = old_to_new(aCondTypes, aOldCondTypes)
-	tOld2NewActn = old_to_new(aActnTypes, aOldActnTypes)
+	local tOld2NewCond = old_to_new(aCondTypes, aOldCondTypes)
+	local tOld2NewActn = old_to_new(aActnTypes, aOldActnTypes)
 
-	storage:set_string("aCondTypes", minetest.serialize(aCondTypes))
-	storage:set_string("aActnTypes", minetest.serialize(aActnTypes))
+	meta:set_string("aCondTypes", minetest.serialize(aCondTypes))
+	meta:set_string("aActnTypes", minetest.serialize(aActnTypes))
+	
+	return tOld2NewCond, tOld2NewActn
 end
 
 minetest.register_lbm({
@@ -844,23 +819,19 @@ minetest.register_lbm({
 	action = function(pos, node)
 		local meta = minetest.get_meta(pos)
 		local fs_data = minetest.deserialize(meta:get_string("fs_data"))
-	
-		if #tOld2NewCond == 0 then  -- not updated so far?
-			update_database()
-		end
-		-- map from old to new indexes
-		for idx = 1,NUM_RULES do
-			fs_data["subm1"..idx.."_cond"] = tOld2NewCond[fs_data["subm1"..idx.."_cond"]]
-			fs_data["subm2"..idx.."_cond"] = tOld2NewCond[fs_data["subm2"..idx.."_cond"]]
-			fs_data["subma"..idx.."_actn"] = tOld2NewActn[fs_data["subma"..idx.."_actn"]]
-		end
 		
-		meta:set_string("fs_data", minetest.serialize(fs_data))
-		--print("aOldCondTypes", dump(aOldCondTypes))
-		--print("aOldActnTypes", dump(aOldActnTypes))
-		--print("tOld2NewCond", dump(tOld2NewCond))
-		--print("tOld2NewActn", dump(tOld2NewActn))
-		--print("fs_data", dump(fs_data))
+		local tOld2NewCond, tOld2NewActn = update_node_database(meta)
+		
+		if tOld2NewCond and tOld2NewActn then
+			-- map from old to new indexes
+			for idx = 1,NUM_RULES do
+				fs_data["subm1"..idx.."_cond"] = tOld2NewCond[fs_data["subm1"..idx.."_cond"]]
+				fs_data["subm2"..idx.."_cond"] = tOld2NewCond[fs_data["subm2"..idx.."_cond"]]
+				fs_data["subma"..idx.."_actn"] = tOld2NewActn[fs_data["subma"..idx.."_actn"]]
+			end
+			
+			meta:set_string("fs_data", minetest.serialize(fs_data))
+		end
 	end
 })
 
