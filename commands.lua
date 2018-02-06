@@ -21,7 +21,7 @@ smartline.register_condition("default", {
 	button_label = function(data) return ""	end,
 })
 
-smartline.register_action("", {
+smartline.register_action("default", {
 	title = "",
 	formspec = {},
 	on_execute = function(data, flags, timers, inputs) end,

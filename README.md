@@ -19,6 +19,10 @@ The mod comes with several new nodes, all in a smart and small housing:
   - a Sequencer (derived from Tubelib Addons2), for time triggered actions (time in seconds)
 
 
+API Reference: ![api.md](https://github.com/joe7575/smartline/blob/master/api.md)
+
+
+
 Browse on: ![GitHub](https://github.com/joe7575/smartline)
 
 Download: ![GitHub](https://github.com/joe7575/smartline/archive/master.zip)
