@@ -260,6 +260,48 @@ smartline.register_condition("fuel", {
 	end,
 })
 
+smartline.register_condition("signaltower", {
+	title = "Signal Tower state",
+	formspec = {
+		{
+			type = "field",
+			name = "number",
+			label = "state from Signal Tower with number",
+			default = "",
+		},
+		{
+			type = "textlist",
+			name = "value",
+			label = "is",
+			choices = "off,green,amber,red,not off,not green,not amber,not red",
+			default = 1,
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Works also for Signal Towers in unloaded areas.", 
+		},
+	},
+	
+	on_execute = function(data, flags, timers, inputs, actions) 
+		if data.value then
+			if data.value.num > 4 then
+				return tubelib.send_request(data.number, "state", nil) ~= string.sub(data.value.text, 5)
+			else
+				return tubelib.send_request(data.number, "state", nil) == data.value.text
+			end
+		end
+		return false
+	end,
+	button_label = function(data) 
+		if data.value.num > 4 then
+			return "sig("..data.number..")<>"..string.sub(data.value.text, 5)
+		else
+			return "sig("..data.number..")=="..data.value.text
+		end
+	end,
+})
+
 smartline.register_action("signaltower", {
 	title = "Signal Tower command",
 	formspec = {
@@ -334,6 +376,11 @@ smartline.register_action("display1", {
 			label = "the following text",      
 			default = "",
 		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Works also for Displays in unloaded areas.", 
+		},
 	},
 	on_execute = function(data, flags, timers, number) 
 		tubelib.send_message(data.number, data.owner, nil, "text", data.text)
@@ -364,6 +411,11 @@ smartline.register_action("display2", {
 			name = "text",
 			label = "the following text",      
 			default = "",
+		},
+		{
+			type = "label", 
+			name = "lbl", 
+			label = "Hint: Works also for Displays in unloaded areas.", 
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
