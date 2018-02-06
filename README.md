@@ -4,7 +4,7 @@ This tubelib extension provides small and smart sensors, actors and controllers.
 
 ![SmartLine](https://github.com/joe7575/smartline/blob/master/screenshot.png)
 
-The most interesting node of SmartLine is the SmartLine Controller, a 'computer' to control and monitor Tubelib based machines.
+The most important and smart node of SmartLine is the SmartLine Controller, a 'computer' to control and monitor Tubelib based machines.
 You don't need any programming skills, it is more like a configuration according to the "IF this THEN that" concept:
 
     IF <cond1> OR <cond2> THEN <action>
@@ -16,7 +16,7 @@ Examples for conditions are:
  - a node state is fault, blocked, standby,...
  - a timer is expired 
 
-Examples for actions ate:
+Examples for actions are:
  - switch on/off tubelib nodes, like lamps, door blocks, machines
  - send mail/chat messages to the owner
  - output a text message to the display
