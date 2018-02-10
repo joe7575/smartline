@@ -82,6 +82,14 @@ local function create_kv_list(elem)
 	return a
 end
 
+local function output(label, prefix, postfix, kvTbl)
+	local tbl = {label..": "}
+	for k,v in pairs(kvTbl) do
+		tbl[#tbl+1] = prefix..k..postfix.."="..v..", "
+	end
+	return table.concat(tbl)
+end
+
 local function formspec_event(eventBindings, fields)
 	for key,value in pairs(fields) do
 		if value ~= nil and eventBindings[key] ~= nil then
@@ -258,7 +266,10 @@ end
 
 local function decrement_timers(timers)
 	for idx,_ in ipairs(timers) do
-		timers[idx] = timers[idx] - 1
+		timers[idx] = tonumber(timers[idx])
+		if timers[idx] > 0 then
+			timers[idx] = timers[idx] - 1
+		end
 	end
 end
 
@@ -411,24 +422,25 @@ local function eval_formspec_oprnd(meta, fs_data, fields)
 end
 
 local function formspec_main(state, fs_data, output)
-	local tbl = {"size[13,10;true]"..
+	local tbl = {"size[15,10;true]"..
 		default.gui_bg..
 		default.gui_bg_img..
 		default.gui_slots..
 		"field[0,0;0,0;_type_;;main]"..
-		"label[0.8,0;label:]label[3.3,0;IF  cond 1:]label[6,0;and/or]label[7.3,0;cond 2:]label[10.2,0;THEN  action:]"}
+		"label[0.8,0;label:]label[3.8,0;IF  cond 1:]label[7,0;and/or]label[8.3,0;cond 2:]label[11.7,0;THEN  action:]"}
 		
 	for idx = 1,NUM_RULES do
 		local ypos = idx * 0.8 - 0.4
 		tbl[#tbl+1] = "label[0,"..(0.2+ypos)..";"..idx.."]"
-		tbl[#tbl+1] = "button[0.4,"..ypos..";2.5,1;label"..idx..";"..(fs_data["label"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[3,"..  ypos..";2.9,1;cond1"..idx..";"..(fs_data["cond1"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[6,"..  ypos..";1,1;oprnd"..  idx..";"..(fs_data["oprnd"..idx] or "or").."]"
-		tbl[#tbl+1] = "button[7,"..  ypos..";2.9,1;cond2"..idx..";"..(fs_data["cond2"..idx] or "...").."]"
-		tbl[#tbl+1] = "button[10,".. ypos..";2.9,1;actna"..idx..";"..(fs_data["actna"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[0.4,"..ypos..";3,1;label"..idx..";"..(fs_data["label"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[3.5,"..ypos..";3.4,1;cond1"..idx..";"..(fs_data["cond1"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[7,"..  ypos..";1,1;oprnd"..  idx..";"..(fs_data["oprnd"..idx] or "or").."]"
+		tbl[#tbl+1] = "button[8,"..  ypos..";3.4,1;cond2"..idx..";"..(fs_data["cond2"..idx] or "...").."]"
+		tbl[#tbl+1] = "button[11.5,".. ypos..";3.4,1;actna"..idx..";"..(fs_data["actna"..idx] or "...").."]"
 	end
-	tbl[#tbl+1] = "image_button[12,9;1,1;".. tubelib.state_button(state) ..";button;]"
-	tbl[#tbl+1] = "button[10.2,9;1.5,1;help;help]"
+	tbl[#tbl+1] = "image_button[14,9;1,1;".. tubelib.state_button(state) ..";button;]"
+	tbl[#tbl+1] = "button[10.6,9;1.5,1;state;state]"
+	tbl[#tbl+1] = "button[12.2,9;1.5,1;help;help]"
 	tbl[#tbl+1] = "label[0.2,8.8;"..output.."]"
 	tbl[#tbl+1] = "field[0.4,9.6;4.8,1;cmnd;;<cmnd>]"
 	tbl[#tbl+1] = "button[5,9.3;1,1;ok;OK]"
@@ -458,15 +470,82 @@ local function eval_formspec_main(meta, fs_data, fields)
 end
 
 local function formspec_help(offs)
-	return "size[13,10]"..
+	return "size[15,10]"..
 		default.gui_bg..
 		default.gui_bg_img..
 		default.gui_slots..
 		"field[0,0;0,0;_type_;;help]"..
 		"label[0,"..(-offs/50)..";"..sHELP.."]"..
 		--"label[0.2,0;test]"..
-		"scrollbar[11.5,1;0.5,7;vertical;sb_help;"..offs.."]"..
-		"button[11.5,9;1.5,1;close;close]"
+		"scrollbar[13.5,1;0.5,7;vertical;sb_help;"..offs.."]"..
+		"button[13.5,9;1.5,1;close;close]"
+end
+
+local function background(xpos, ypos, val)
+	if val == true then
+		return "box["..(xpos-0.1)..",".. ypos..";3.3,0.4;#008000]"
+	elseif val == false then
+		return "box["..(xpos-0.1)..",".. ypos..";3.3,0.4;#800000]"
+	else
+		return "box["..(xpos-0.1)..",".. ypos..";3.3,0.4;#202020]"
+	end
+end	
+
+local function formspec_state(meta, fs_data)
+	local number = meta:get_string("number")
+	local state = meta:get_int("state")
+	local tbl = {"size[15,10;true]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"field[0,0;0,0;_type_;;state]"..
+		"label[0.8,0;label:]label[3.8,0;IF  cond 1:]label[7,0;and/or]label[8.3,0;cond 2:]label[11.7,0;THEN  action:]"}
+	
+	if state == tubelib.RUNNING and number then
+		local inputs = tubelib.get_data(number, "inputs") or {}
+		local act_gate = tubelib.get_data(number, "act_gate") or {}
+		local timers = tubelib.get_data(number, "timers") or {}
+		local flags = tubelib.get_data(number, "flags") or {}
+		local conds = tubelib.get_data(number, "conds") or {}
+		
+		for idx = 1,NUM_RULES do
+			local ypos = idx * 0.6 + 0.2
+			local s1 = fs_data["cond1"..idx] or "    ...    "
+			local s2 = fs_data["cond2"..idx] or "    ...    "
+			local sa = fs_data["actna"..idx] or "    ...    "
+			if conds[idx] == nil then
+				tbl[#tbl+1] = background(3.7,  ypos, nil)
+				tbl[#tbl+1] = background(8,    ypos, nil)
+			else
+				tbl[#tbl+1] = background(3.7,  ypos, conds[idx] == 1 or conds[idx] == 3)
+				tbl[#tbl+1] = background(8,    ypos, conds[idx] == 2 or conds[idx] == 3)
+			end
+			tbl[#tbl+1] = background(11.5, ypos, act_gate[idx])
+			tbl[#tbl+1] = "label[0,"..  ypos..";"..idx.."]"
+			tbl[#tbl+1] = "label[0.5,"..ypos..";"..(fs_data["label"..idx] or "    ...    ").."]"
+			tbl[#tbl+1] = "label[3.7,"..  ypos..";"..s1.."]"
+			tbl[#tbl+1] = "label[7.2,"..  ypos..";"..(fs_data["oprnd"..idx] or "or").."]"
+			tbl[#tbl+1] = "label[8,"..  ypos..";"..s2.."]"
+			tbl[#tbl+1] = "label[11.5,".. ypos..";"..sa.."]"
+		end
+
+		tbl[#tbl+1] = "label[0,"..(7)..";"..output("Inputs", "i(", ")", inputs).."]"
+		tbl[#tbl+1] = "label[0,"..(7.6)..";"..output("Timers", "t", "", timers).."]"
+		tbl[#tbl+1] = "label[0,"..(8.2)..";"..output("Flags", "f", "", flags).."]"
+		
+		tbl[#tbl+1] = "label[0,9;Hint:]"
+		tbl[#tbl+1] = "box[1.3,9;7,0.4;#008000]"
+		tbl[#tbl+1] = "label[1.4,9;condition is true / action was executed]"
+		tbl[#tbl+1] = "box[8.9,9;4,0.4;#800000]"
+		tbl[#tbl+1] = "label[9,9;condition is false]"
+		tbl[#tbl+1] = "box[1.3,9.6;7,0.4;#202020]"
+		tbl[#tbl+1] = "label[1.4,9.6;action was not executed]"
+
+	end
+	
+	tbl[#tbl+1] = "button[13.3,8;1.7,1;update;update]"
+	tbl[#tbl+1] = "button[13.3,9;1.7,1;close;close]"
+	return table.concat(tbl)
 end
 
 local function execute(meta, number, debug)
@@ -475,10 +554,14 @@ local function execute(meta, number, debug)
 	local act_gate = tubelib.get_data(number, "act_gate") or {}
 	local timers = tubelib.get_data(number, "timers") or {}
 	local flags = tubelib.get_data(number, "flags") or {}
+	local conds = tubelib.get_data(number, "conds") or {}
 	decrement_timers(timers)
 	local actions = {}
 	for i,item in ipairs(rt_rules) do
-		if eval_cond(item.cond1, flags, timers, inputs, actions) + eval_cond(item.cond2, flags, timers, inputs, actions) >= item.cond_cnt then
+		local c1 = eval_cond(item.cond1, flags, timers, inputs, actions)
+		local c2 = eval_cond(item.cond2, flags, timers, inputs, actions)
+		conds[i] = c1 + c2*2
+		if c1 + c2 >= item.cond_cnt then
 			if act_gate[i] == nil then
 				-- execute action
 				exec_action(item.actn, flags, timers, number)
@@ -490,10 +573,12 @@ local function execute(meta, number, debug)
 		end
 	end
 	--tubelib.set_data(number, "rt_rules", rt_rules)
-	tubelib.set_data(number, "inputs", {})
+	--tubelib.set_data(number, "inputs", {})
+	tubelib.set_data(number, "inputs", inputs)
 	tubelib.set_data(number, "act_gate", act_gate)
 	tubelib.set_data(number, "timers", timers)
 	tubelib.set_data(number, "flags", flags)
+	tubelib.set_data(number, "conds", conds)
 end
 
 local function check_rules(pos, elapsed)
@@ -525,7 +610,8 @@ end
 local function start_controller(pos, number, fs_data)
 	tubelib.set_data(number, "timers",   {})  -- local timers
 	tubelib.set_data(number, "inputs",   {})  -- for rx commands
-	tubelib.set_data(number, "flags",    {})  -- to store conditions
+	tubelib.set_data(number, "flags",    {})  -- to store flags
+	tubelib.set_data(number, "conds",    {})  -- to store conditions
 	tubelib.set_data(number, "act_gate", {})  -- for action states
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
@@ -648,6 +734,9 @@ local function on_receive_fields(pos, formname, fields, player)
 		fs_data = eval_formspec_actn(meta, fs_data, fields)
 	elseif fields._type_ == "help" then
 		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
+	elseif fields._type_ == "state" then
+		local state = meta:get_int("state")
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
 	end
 	if fields._cancel_ then
 		fs_data = minetest.deserialize(meta:get_string("fs_old"))
@@ -661,6 +750,10 @@ local function on_receive_fields(pos, formname, fields, player)
 	elseif fields.help then
 		stop_controller(pos, fs_data)
 		meta:set_string("formspec", formspec_help(1))
+	elseif fields.state then
+		meta:set_string("formspec", formspec_state(meta, fs_data))
+	elseif fields.update then
+		meta:set_string("formspec", formspec_state(meta, fs_data))
 	elseif fields.sb_help then
 		local evt = minetest.explode_scrollbar_event(fields.sb_help)
 		if evt.type == "CHG" then

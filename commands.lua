@@ -184,7 +184,7 @@ smartline.register_action("timer", {
 	},
 	on_execute = function(data, flags, timers, number) 
 		if data.timer then
-			timers[data.timer.num] = data.value 
+			timers[data.timer.num] = tonumber(data.value) or 0
 		end
 	end,
 	button_label = function(data) 
