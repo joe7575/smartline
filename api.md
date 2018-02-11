@@ -73,8 +73,8 @@ smartline.register_action(name, {
 })
 ```
 
-The `title` is used in the main menu for the condition and action selection dialog.
-The `formspec` table defines the condition/action related form for additional user parameters.
+The 'title' is used in the main menu for the condition and action selection dialog.
+The 'formspec' table defines the condition/action related form for additional user parameters.
 It supports the following subset of the minetest formspec elements:
 
   - textlist
@@ -105,10 +105,11 @@ formspec = {
 		name = "lbl",                                -- not really used, but internally needed
 		label = "Hint: Connect the input nodes with the controller", 
 	},
+}
 ```
 
-The table 'data' includes the condition/action related formspec data. 
-For the above `formspec` example, it is:
+The table 'data' includes the condition/action related 'formspec' data. 
+For the above 'formspec' example, it is:
 
 ```LUA
     data = {
