@@ -555,8 +555,8 @@ local function execute(meta, number, debug)
 	local timers = tubelib.get_data(number, "timers") or {}
 	local flags = tubelib.get_data(number, "flags") or {}
 	local conds = tubelib.get_data(number, "conds") or {}
+	local actions = tubelib.get_data(number, "actions") or {}
 	decrement_timers(timers)
-	local actions = {}
 	for i,item in ipairs(rt_rules) do
 		local c1 = eval_cond(item.cond1, flags, timers, inputs, actions)
 		local c2 = eval_cond(item.cond2, flags, timers, inputs, actions)
@@ -579,6 +579,7 @@ local function execute(meta, number, debug)
 	tubelib.set_data(number, "timers", timers)
 	tubelib.set_data(number, "flags", flags)
 	tubelib.set_data(number, "conds", conds)
+	tubelib.set_data(number, "actions", actions)
 end
 
 local function check_rules(pos, elapsed)
@@ -613,6 +614,7 @@ local function start_controller(pos, number, fs_data)
 	tubelib.set_data(number, "flags",    {})  -- to store flags
 	tubelib.set_data(number, "conds",    {})  -- to store conditions
 	tubelib.set_data(number, "act_gate", {})  -- for action states
+	tubelib.set_data(number, "actions",  {})  -- for executed action
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
 
