@@ -75,10 +75,10 @@ smartline.register_condition("flag", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs, actions) 
-		return data.value and data.flag and flags[data.flag.num] == data.value.text
+		return flags[data.flag] == data.value_text
 	end,
 	button_label = function(data) 
-		return data.flag.text.."=="..data.value.text
+		return data.flag_text.."=="..data.value_text
 	end,
 })
 
@@ -106,12 +106,10 @@ smartline.register_action("flag", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.value and data.flag then
-			flags[data.flag.num] = data.value.text
-		end
+		flags[data.flag] = data.value_text
 	end,
 	button_label = function(data) 
-		return data.flag.text.."="..data.value.text
+		return data.flag_text.."="..data.value_text
 	end,
 })
 
@@ -138,10 +136,10 @@ smartline.register_condition("input", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs, actions) 
-		return data.value and inputs[data.number] == data.value.text
+		return inputs[data.number] == data.value_text
 	end,
 	button_label = function(data) 
-		return "i("..data.number..")=="..data.value.text 
+		return "i("..data.number..")=="..data.value_text 
 	end,
 })
 
@@ -158,10 +156,10 @@ smartline.register_condition("timer", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs, actions) 
-		return data.timer and timers[data.timer.num] == 0
+		return timers[data.timer] == 0
 	end,
 	button_label = function(data) 
-		return data.timer.text.." expired"
+		return data.timer_text.." expired"
 	end,
 })
 
@@ -183,12 +181,10 @@ smartline.register_action("timer", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.timer then
-			timers[data.timer.num] = tonumber(data.value) or 0
-		end
+		timers[data.timer] = tonumber(data.value) or 0
 	end,
 	button_label = function(data) 
-		return data.timer.text.."="..data.value 
+		return data.timer_text.."="..data.value 
 	end,
 })
 
@@ -216,10 +212,10 @@ smartline.register_condition("pusher", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
-		return data.value and tubelib.send_request(data.number, "state", "") == data.value.text
+		return tubelib.send_request(data.number, "state", "") == data.value_text
 	end,
 	button_label = function(data) 
-		return "st("..data.number..")=="..string.sub(data.value.text, 1, 4).."."
+		return "st("..data.number..")=="..string.sub(data.value_text or "???", 1, 4).."."
 	end,
 })
 
@@ -242,20 +238,17 @@ smartline.register_condition("fuel", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
-		if data.value then
-			if data.value.num > 2 then
-				return tubelib.send_request(data.number, "fuel", nil) ~= string.sub(data.value.text, 5)
-			else
-				return tubelib.send_request(data.number, "fuel", nil) == data.value.text
-			end
+		if data.value > 2 then
+			return tubelib.send_request(data.number, "fuel", nil) ~= string.sub(data.value_text or "???", 5)
+		else
+			return tubelib.send_request(data.number, "fuel", nil) == data.value_text
 		end
-		return false
 	end,
 	button_label = function(data) 
-		if data.value.num > 2 then
-			return "st("..data.number..")<>"..string.sub(data.value.text, 5)
+		if data.value > 2 then
+			return "st("..data.number..")<>"..string.sub(data.value_text or "???", 5)
 		else
-			return "st("..data.number..")=="..data.value.text
+			return "st("..data.number..")=="..data.value_text
 		end
 	end,
 })
@@ -284,20 +277,17 @@ smartline.register_condition("signaltower", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
-		if data.value then
-			if data.value.num > 4 then
-				return tubelib.send_request(data.number, "state", nil) ~= string.sub(data.value.text, 5)
-			else
-				return tubelib.send_request(data.number, "state", nil) == data.value.text
-			end
+		if data.value > 4 then
+			return tubelib.send_request(data.number, "state", nil) ~= string.sub(data.value_text or "???", 5)
+		else
+			return tubelib.send_request(data.number, "state", nil) == data.value_text
 		end
-		return false
 	end,
 	button_label = function(data) 
-		if data.value.num > 4 then
-			return "sig("..data.number..")<>"..string.sub(data.value.text, 5)
+		if data.value > 4 then
+			return "sig("..data.number..")<>"..string.sub(data.value_text or "???", 5)
 		else
-			return "sig("..data.number..")=="..data.value.text
+			return "sig("..data.number..")=="..data.value_text
 		end
 	end,
 })
@@ -320,12 +310,10 @@ smartline.register_action("signaltower", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.value then
-			tubelib.send_message(data.number, data.owner, nil, data.value.text, number)
-		end
+		tubelib.send_message(data.number, data.owner, nil, data.value_text, number)
 	end,
 	button_label = function(data) 
-		return "sig("..data.number..","..data.value.text..")"
+		return "sig("..data.number..","..data.value_text..")"
 	end,
 })
 
@@ -352,12 +340,10 @@ smartline.register_action("switch", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.value then
-			tubelib.send_message(data.number, data.owner, nil, data.value.text, number)
-		end
+		tubelib.send_message(data.number, data.owner, nil, data.value_text, number)
 	end,
 	button_label = function(data) 
-		return "cmnd("..data.number..","..data.value.text..")"
+		return "cmnd("..data.number..","..data.value_text..")"
 	end,
 })
 
@@ -419,10 +405,8 @@ smartline.register_action("display2", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.row then
-			local payload = {row = data.row.num, str = data.text}
-			tubelib.send_message(data.number, data.owner, nil, "row", payload)
-		end
+		local payload = {row = data.row, str = data.text}
+		tubelib.send_message(data.number, data.owner, nil, "row", payload)
 	end,
 	button_label = function(data) 
 		return "dispay("..data.number..")"
@@ -542,12 +526,10 @@ smartline.register_action("door", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		if data.state then
-			door_toggle(data.pos, data.owner, data.state.text)
-		end
+		door_toggle(data.pos, data.owner, data.state_text)
 	end,
 	button_label = function(data) 
-		return "door("..data.state.text..")"
+		return "door("..data.state_text..")"
 	end,
 })
 
@@ -579,7 +561,7 @@ smartline.register_condition("playerdetector", {
 	end,
 	button_label = function(data) 
 		if string.len(data.name) > 6 then
-			return "name=="..string.sub(data.name, 1, 6).."."
+			return "name=="..string.sub(data.name or "???", 1, 6).."."
 		end
 		return "name=="..data.name
 	end,
@@ -602,10 +584,10 @@ smartline.register_condition("action", {
 		},
 	},
 	on_execute = function(data, flags, timers, inputs, actions) 
-		return data.action and actions[data.action.num] == true
+		return actions[data.action] == true
 	end,
 	button_label = function(data) 
-		return "action"..data.action.num
+		return "action"..data.action
 	end,
 })
 

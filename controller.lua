@@ -38,25 +38,30 @@ Actions are:
  
 Variables and timers: 
  - 8 flags (set/reset) can be used to store conditions 
-    for later use. These flags are stored permanently.
- - Action flags (id set with each executed action)
-    can be used as condition for subsequent rules.
-	Action flags are cleared after each controller run.
+    for later use.
+ - Action flags (one flag for each rule, set when action is executed)
+    The flag can be used as condition for subsequent rules.
  - 8 timers (resolution in seconds) can be use
    for delayed actions. 
 
 The controller executes all rules once per second. 
-All actions are only executed once. The conditions
-has to become false and then true again, to trigger
-the action again.
+Independent how long the input condition stays 'true',
+the corresponding action will be triggered only once.
+The condition has to become false and then true again, to 
+re-trigger/execute the action again.
 
 The 'label' has no function. It is only used
-to better distinguish rules.
+to give rules a name.
 
 Edit command examples:
  - 'x 1 8'  exchange rows 1 with row 8
  - 'c 1 2'  copy row 1 to 2
  - 'd 3'    delete row 3
+
+The state view shows the current state of all rules.
+The colors show, if conditions are true or false and
+if actions were already executed or not.
+It has a 'update' button to update the view.
 
 For more information, see: goo.gl/wZ5GUR
 ]]
@@ -66,14 +71,6 @@ local sOUTPUT = "Press 'help' for edit commands"
 --
 -- Helper functions
 --
-local function create_arr(elem, num) 
-	local a = {}
-	for i = 1,num do
-		table.insert(a, elem)
-	end
-	return a
-end
-
 local function create_kv_list(elem) 
 	local a = {}
 	for i,v in ipairs(elem) do
@@ -88,14 +85,6 @@ local function output(label, prefix, postfix, kvTbl)
 		tbl[#tbl+1] = prefix..k..postfix.."="..v..", "
 	end
 	return table.concat(tbl)
-end
-
-local function formspec_event(eventBindings, fields)
-	for key,value in pairs(fields) do
-		if value ~= nil and eventBindings[key] ~= nil then
-			eventBindings[key](key, value)
-		end
-	end
 end
 
 
@@ -206,7 +195,8 @@ local function get_subm_data(postfix, fs_definition, fs_data)
 		elseif elem.type == "textlist" then	
 			local num = tonumber(fs_data["subm"..postfix.."_"..elem.name]) or 1
 			num = math.min(num, elem.num_choices)
-			data[elem.name] = {text = elem.tChoices[num], num = num}
+			data[elem.name] = num
+			data[elem.name.."_text"] = elem.tChoices[num]
 		end
 	end
 	-- type of the condition/action

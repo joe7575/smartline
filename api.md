@@ -1,8 +1,7 @@
 # SmartLine Controller API
 
 
-The SmartLine Controller provides the following API to register additional conditions and actions from other mods:
-
+The SmartLine Controller provides the following API to register additional condition and action commands from other mods:
 
 * smartline.register_condition(name, condition definition)
 * smartline.register_action(name, action definition)
@@ -16,17 +15,21 @@ Depending on the operator, one or both condition functions have to return true, 
 If the action is called, the action related flag (a1..a10) is automatically set and can be used in  
 subsequent rules to trigger further actions without the need to evaluate both conditions again.
 
+The controller executes all rules once per second. Independent how long the input condition stays 'true',
+the corresponding action will be triggered only once. The condition has to become false and then true again, to 
+re-trigger/execute the action again.
+
 The Controller supports the following variables:
 - binary flags (f1..f8) to store states (true/false)
 - timer variables (t1..t8), decremented each second. Used to execute actions time based
 - input values (referenced via node number) to evaluate received commands (on/off) from other tubelib nodes
 - action flags (a1..a10) )to store the action state from previous executed rules
 
-`input` variables and `action` flags are deleted after each run. `flags` and `timer` variables are stored non volatile (as long as the controller is running).
+All variables are stored non volatile (as long as the controller is running).
 
 Each registered condition and action has the function `on_execute`  which is called for each rule (every second).
-* The condition function has to return true or false, depending if the condition is true or not
-* The action function has to execute the defined action
+* The condition function has to return true or false, depending if the condition is true or not.
+* The action function has to execute the defined action.
 
 In addition each registered condition and action has the function `button_label`, which determines the button label
 for the Controller main formspec. Please note that the maximum number of visible characters for the button label is
@@ -60,7 +63,7 @@ See `commands.lua` as reference. All predefined SmartLine Controller commands ar
     	formspec = {},
     	on_execute = function(data, flags, timers, inputs) 
     	-- data:    table with the formspec data 
-    	-- flag:    table with the flag values, see 
+    	-- flag:    table with the flag values
     	-- timers:  table with the timer values
     	-- inputs:  table with the input values
     	end,
@@ -69,8 +72,9 @@ See `commands.lua` as reference. All predefined SmartLine Controller commands ar
     	end,
     })
 ```
- 
-The formspec table defines the condition/action related form for additional user parameters.
+
+The `title` is used in the main menu for the condition and action selection dialog.
+The `formspec` table defines the condition/action related form for additional user parameters.
 It supports the following subset of the minetest formspec elements:
 
   - textlist
@@ -90,18 +94,27 @@ Example:
 			default = "",                                -- default value
 		},
 		{
-			type = "textlist",
-			name = "value",                              -- table 'data.value'
-			label = "is",
+			type = "textlist",                           -- formspec element
+			name = "value",                              -- reference key for the table 'data'
+			label = "is",                                -- label shown above of the element
 			choices = "on,off",                          -- list elements
 			default = 1,                                 -- first list element as default value
 		},
 		{
-			type = "label",                      
+			type = "label",
 			name = "lbl",                                -- not really used, but internally needed
 			label = "Hint: Connect the input nodes with the controller", 
 		},
 ```
- 
- 
- 
+
+The table 'data' includes the condition/action related formspec data. 
+For the above `formspec` example, it is:
+
+```LUA
+    data = {
+        number = <string>,       -- the entered value of the "field",
+        value = <number>,        -- the number of the selected element of the "textlist"
+        value_text = <string>,   -- in addition the text of the selected element of the "textlist"
+    }
+```
+
