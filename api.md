@@ -40,37 +40,37 @@ See `commands.lua` as reference. All predefined SmartLine Controller commands ar
 ## Prototypes
 
 ```LUA
-    smartline.register_condition("mymod;mycond", {
-    	title = "this is my cond",
-    	formspec = {},
-    	on_execute = function(data, flags, timers, inputs, actions) 
-    	-- data:    table with the formspec data 
-    	-- flag:    table with the flag values
-    	-- timers:  table with the timer values
-    	-- inputs:  table with the input values
-    	-- actions: table with the action values
-    	end,
-    	button_label = function(data) 
-    	   return "button label"
-    	end,
-    })
+smartline.register_condition("mymod;mycond", {
+	title = "my condition",
+	formspec = {},
+	on_execute = function(data, flags, timers, inputs, actions) 
+	-- data:    table with the formspec data 
+	-- flag:    table with the flag values
+	-- timers:  table with the timer values
+	-- inputs:  table with the input values
+	-- actions: table with the action values
+	end,
+	button_label = function(data) 
+	   return "button label"
+	end,
+})
 ```
 
 
 ```LUA
-    smartline.register_action(name, {
-    	title = "",
-    	formspec = {},
-    	on_execute = function(data, flags, timers, inputs) 
-    	-- data:    table with the formspec data 
-    	-- flag:    table with the flag values
-    	-- timers:  table with the timer values
-    	-- inputs:  table with the input values
-    	end,
-    	button_label = function(data) 
-    	   return "button label"
-    	end,
-    })
+smartline.register_action(name, {
+	title = "my action",
+	formspec = {},
+	on_execute = function(data, flags, timers, inputs) 
+	-- data:    table with the formspec data 
+	-- flag:    table with the flag values
+	-- timers:  table with the timer values
+	-- inputs:  table with the input values
+	end,
+	button_label = function(data) 
+	   return "button label"
+	end,
+})
 ```
 
 The `title` is used in the main menu for the condition and action selection dialog.
@@ -86,25 +86,25 @@ All other attributes are according to the original formspec.
 Example:
 
 ```LUA
-	formspec = {
-		{
-			type = "field",                              -- formspec element
-			name = "number",                             -- reference key for the table 'data' used in function `on_execute`
-			label = "input from node with number",       -- label shown above of the element
-			default = "",                                -- default value
-		},
-		{
-			type = "textlist",                           -- formspec element
-			name = "value",                              -- reference key for the table 'data'
-			label = "is",                                -- label shown above of the element
-			choices = "on,off",                          -- list elements
-			default = 1,                                 -- first list element as default value
-		},
-		{
-			type = "label",
-			name = "lbl",                                -- not really used, but internally needed
-			label = "Hint: Connect the input nodes with the controller", 
-		},
+formspec = {
+	{
+		type = "field",                          -- formspec element
+		name = "number",                         -- reference key for the table 'data'
+		label = "input from node with number",   -- label shown above of the element
+		default = "",                            -- default value
+	},
+	{
+		type = "textlist",                       -- formspec element
+		name = "value",                          -- reference key for the table 'data'
+		label = "is",                            -- label shown above of the element
+		choices = "on,off",                      -- list elements
+		default = 1,                             -- first list element as default value
+	},
+	{
+		type = "label",
+		name = "lbl",                                -- not really used, but internally needed
+		label = "Hint: Connect the input nodes with the controller", 
+	},
 ```
 
 The table 'data' includes the condition/action related formspec data. 
