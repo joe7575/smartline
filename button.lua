@@ -182,7 +182,7 @@ minetest.register_craft({
 	output = "smartline:button",
 	recipe = {
 		{"", "", ""},
-		{"dye:blue", "default:copper_ingot", "tubelib_addons2:wlanchip"},
+		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"", "", ""},
 	},
 })
