@@ -451,8 +451,8 @@ smartline.register_action("display3", {
 		},
 	},
 	on_execute = function(data, flags, timers, number) 
-		local text = string.gsub(data.text, "*", flags.name)
-		tubelib.send_message(data.number, data.owner, nil, "row", text)
+		local text = string.gsub(data.text, "*", flags.name or "<unknown>")
+		tubelib.send_message(data.number, data.owner, nil, "text", text)
 	end,
 	button_label = function(data) 
 		return "dispay(<name>)"
