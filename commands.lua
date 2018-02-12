@@ -132,7 +132,7 @@ smartline.register_condition("input", {
 		{
 			type = "label", 
 			name = "lbl", 
-			label = "Hint: Connect the input nodes with the controller", 
+			label = "Hint: An input is only available,\nif the sending node is connected with the controller.", 
 		},
 	},
 	on_execute = function(data, flags, timers, inputs, actions) 
@@ -238,6 +238,7 @@ smartline.register_condition("fuel", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
+		print("data.value", dump(data.value)) 
 		if data.value > 2 then
 			return tubelib.send_request(data.number, "fuel", nil) ~= string.sub(data.value_text or "???", 5)
 		else

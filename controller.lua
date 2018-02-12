@@ -257,7 +257,7 @@ end
 local function decrement_timers(timers)
 	for idx,_ in ipairs(timers) do
 		timers[idx] = tonumber(timers[idx])
-		if timers[idx] > 0 then
+		if timers[idx] >= 0 then
 			timers[idx] = timers[idx] - 1
 		end
 	end
@@ -518,10 +518,12 @@ local function formspec_state(meta, fs_data)
 			tbl[#tbl+1] = "label[8,"..  ypos..";"..s2.."]"
 			tbl[#tbl+1] = "label[11.5,".. ypos..";"..sa.."]"
 		end
+		
+		tbl[#tbl+1] = "label[10,8.2; Seconds: "..(meta:get_int("runtime") or 1).."]"
 
-		tbl[#tbl+1] = "label[0,"..(7)..";"..output("Inputs", "i(", ")", inputs).."]"
-		tbl[#tbl+1] = "label[0,"..(7.6)..";"..output("Timers", "t", "", timers).."]"
-		tbl[#tbl+1] = "label[0,"..(8.2)..";"..output("Flags", "f", "", flags).."]"
+		tbl[#tbl+1] = "label[0,7;"..output("Inputs", "i(", ")", inputs).."]"
+		tbl[#tbl+1] = "label[0,7.6;"..output("Timers", "t", "", timers).."]"
+		tbl[#tbl+1] = "label[0,8.2;"..output("Flags", "f", "", flags).."]"
 		
 		tbl[#tbl+1] = "label[0,9;Hint:]"
 		tbl[#tbl+1] = "box[1.3,9;7,0.4;#008000]"
@@ -545,7 +547,7 @@ local function execute(meta, number, debug)
 	local timers = tubelib.get_data(number, "timers") or {}
 	local flags = tubelib.get_data(number, "flags") or {}
 	local conds = tubelib.get_data(number, "conds") or {}
-	local actions = tubelib.get_data(number, "actions") or {}
+	local actions =  {}
 	decrement_timers(timers)
 	for i,item in ipairs(rt_rules) do
 		local c1 = eval_cond(item.cond1, flags, timers, inputs, actions)
@@ -562,19 +564,17 @@ local function execute(meta, number, debug)
 			act_gate[i] = nil
 		end
 	end
-	--tubelib.set_data(number, "rt_rules", rt_rules)
-	--tubelib.set_data(number, "inputs", {})
 	tubelib.set_data(number, "inputs", inputs)
 	tubelib.set_data(number, "act_gate", act_gate)
 	tubelib.set_data(number, "timers", timers)
 	tubelib.set_data(number, "flags", flags)
 	tubelib.set_data(number, "conds", conds)
-	tubelib.set_data(number, "actions", actions)
 end
 
 local function check_rules(pos, elapsed)
 	--local t = minetest.get_us_time()
 	local meta = minetest.get_meta(pos)
+	meta:set_int("runtime", (meta:get_int("runtime") or 1) + 1)
 	local number = meta:get_string("number")
 	local state = meta:get_int("state")
 	if state == tubelib.RUNNING and number then
@@ -604,7 +604,6 @@ local function start_controller(pos, number, fs_data)
 	tubelib.set_data(number, "flags",    {})  -- to store flags
 	tubelib.set_data(number, "conds",    {})  -- to store conditions
 	tubelib.set_data(number, "act_gate", {})  -- for action states
-	tubelib.set_data(number, "actions",  {})  -- for executed action
 	switch_state(pos, tubelib.RUNNING, fs_data)
 end
 
@@ -917,6 +916,9 @@ minetest.register_lbm({
 			
 			meta:set_string("fs_data", minetest.serialize(fs_data))
 		end
+		local number = meta:get_string("number")
+		local owner = meta:get_string("owner")
+		formspec2runtime_rule(number, owner, fs_data)
 	end
 })
 
