@@ -238,7 +238,6 @@ smartline.register_condition("fuel", {
 	},
 	
 	on_execute = function(data, flags, timers, inputs, actions) 
-		print("data.value", dump(data.value)) 
 		if data.value > 2 then
 			return tubelib.send_request(data.number, "fuel", nil) ~= string.sub(data.value_text or "???", 5)
 		else
