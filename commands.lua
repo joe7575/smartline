@@ -443,6 +443,24 @@ smartline.register_action("display3", {
 	end,
 })
 
+smartline.register_action("display4", {
+	title = "Display: Clear screen",
+	formspec = {
+		{
+			type = "field", 
+			name = "number", 
+			label = "Display number", 
+			default = "",
+		},
+	},
+	on_execute = function(data, flags, timers, number) 
+		tubelib.send_message(data.number, data.owner, nil, "clear", "")
+	end,
+	button_label = function(data) 
+		return "dispay(<name>)"
+	end,
+})
+
 if minetest.get_modpath("mail") and mail ~= nil then
 	smartline.register_action("mail", {
 		title = "mail",
