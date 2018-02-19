@@ -173,7 +173,8 @@ minetest.register_node("smartline:button_active", {
 	paramtype = "light",
 	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	groups = {crumbly=0, not_in_creative_inventory=1},
+	groups = {cracky=2, crumbly=2, not_in_creative_inventory=1},
+	drop = "smartline:button",
 	is_ground_content = false,
 	sounds = default.node_sound_wood_defaults(),
 })

@@ -286,7 +286,8 @@ local function formspec_cond(_postfix_, fs_data)
 end
 
 -- evaluate the row condition
-local function eval_formspec_cond(meta, fs_data, fields)
+local function eval_formspec_cond(meta, fs_data, fields, readonly)
+	if readonly then return fs_data end 
 	-- determine condition type
 	local cond = minetest.explode_textlist_event(fields.cond)
 	if cond.type == "CHG" then
@@ -329,7 +330,8 @@ local function formspec_actn(_postfix_, fs_data)
 end
 
 -- evaluate the row action
-local function eval_formspec_actn(meta, fs_data, fields)
+local function eval_formspec_actn(meta, fs_data, fields, readonly)
+	if readonly then return fs_data end 
 	-- determine action type
 	local actn = minetest.explode_textlist_event(fields.actn)
 	if actn.type == "CHG" then
@@ -370,7 +372,8 @@ local function formspec_label(_postfix_, fs_data)
 end
 
 -- evaluate the row label
-local function eval_formspec_label(meta, fs_data, fields)
+local function eval_formspec_label(meta, fs_data, fields, readonly)
+	if readonly then return fs_data end 
 	fs_data["subml"..fields._postfix_.."_label"] = fields.label
 	if fields._exit_ == nil then
 		meta:set_string("formspec", formspec_label(fields._postfix_, fs_data))
@@ -398,7 +401,8 @@ local function formspec_oprnd(_postfix_, fs_data)
 end
 
 -- evaluate the row operand
-local function eval_formspec_oprnd(meta, fs_data, fields)
+local function eval_formspec_oprnd(meta, fs_data, fields, readonly)
+	if readonly then return fs_data end 
 	local oprnd = minetest.explode_textlist_event(fields.oprnd)
 	if oprnd.type == "CHG" then
 		fs_data["submo"..fields._postfix_.."_oprnd"] = oprnd.index
@@ -437,11 +441,13 @@ local function formspec_main(state, fs_data, output)
 	return table.concat(tbl)
 end
 
-local function eval_formspec_main(meta, fs_data, fields)
+local function eval_formspec_main(meta, fs_data, fields, readonly)
 	meta:set_string("fs_old", minetest.serialize(fs_data))
 	for idx = 1,NUM_RULES do
 		-- eval standard inputs
-		fs_data["oprnd"..idx] = fields["oprnd"..idx] or fs_data["oprnd"..idx]
+		if not readonly then
+			fs_data["oprnd"..idx] = fields["oprnd"..idx] or fs_data["oprnd"..idx]
+		end
 		
 		-- eval submenu button events
 		if fields["label"..idx] then
@@ -701,66 +707,79 @@ end
 local function on_receive_fields(pos, formname, fields, player)
 	local meta = minetest.get_meta(pos)
 	local owner = meta:get_string("owner")
+	local state = meta:get_int("state")
 	if not player or not player:is_player() then
-		return
-	end
-	if player:get_player_name() ~= owner then
 		return
 	end
 	local fs_data = minetest.deserialize(meta:get_string("fs_data")) or {}
 	local output = ""
-	if fields.ok then	
-		output = edit_command(fs_data, fields.cmnd)
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, output))
-	end
-	if fields._type_ == "main" then
-		fs_data = eval_formspec_main(meta, fs_data, fields)
-	elseif fields._type_ == "label" then
-		fs_data = eval_formspec_label(meta, fs_data, fields)
-	elseif fields._type_ == "cond" then
-		fs_data = eval_formspec_cond(meta, fs_data, fields)
-	elseif fields._type_ == "oprnd" then
-		fs_data = eval_formspec_oprnd(meta, fs_data, fields)
-	elseif fields._type_ == "actn" then
-		fs_data = eval_formspec_actn(meta, fs_data, fields)
-	elseif fields._type_ == "help" then
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
-	elseif fields._type_ == "state" then
-		local state = meta:get_int("state")
-		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
-	end
-	if fields._cancel_ then
-		fs_data = minetest.deserialize(meta:get_string("fs_old"))
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
-	end
-	meta:set_string("fs_data", minetest.serialize(fs_data))
+	local readonly = player:get_player_name() ~= owner
 	
-	if fields._exit_ then
-		meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
-		stop_controller(pos, fs_data)
+	-- FIRST: test if command entered?
+	if fields.ok then
+		if not readonly then	
+			output = edit_command(fs_data, fields.cmnd)
+			stop_controller(pos, fs_data)
+			meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, output))
+			meta:set_string("fs_data", minetest.serialize(fs_data))
+		end
+	-- SECOND: eval none edit events (events based in __type__)?
 	elseif fields.help then
-		stop_controller(pos, fs_data)
 		meta:set_string("formspec", formspec_help(1))
 	elseif fields.state then
 		meta:set_string("formspec", formspec_state(meta, fs_data))
 	elseif fields.update then
 		meta:set_string("formspec", formspec_state(meta, fs_data))
+	elseif fields._cancel_ then
+		fs_data = minetest.deserialize(meta:get_string("fs_old"))
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
+	elseif fields.close then
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
 	elseif fields.sb_help then
 		local evt = minetest.explode_scrollbar_event(fields.sb_help)
 		if evt.type == "CHG" then
 			meta:set_string("formspec", formspec_help(evt.value))
 		end
 	elseif fields.button then
-		local number = meta:get_string("number")
-		local state = meta:get_int("state")
-		if state == tubelib.RUNNING then
-			stop_controller(pos, fs_data)
-			meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
-		else
-			formspec2runtime_rule(number, owner, fs_data)
-			start_controller(pos, number, fs_data)
-			meta:set_string("formspec", formspec_main(tubelib.RUNNING, fs_data, sOUTPUT))
+		if not readonly then
+			local number = meta:get_string("number")
+			local state = meta:get_int("state")
+			if state == tubelib.RUNNING then
+				stop_controller(pos, fs_data)
+				meta:set_string("formspec", formspec_main(tubelib.STOPPED, fs_data, sOUTPUT))
+			else
+				formspec2runtime_rule(number, owner, fs_data)
+				start_controller(pos, number, fs_data)
+				meta:set_string("formspec", formspec_main(tubelib.RUNNING, fs_data, sOUTPUT))
+			end
 		end
+	-- THIRD: evaluate edit events from sub-menus
+	elseif fields._type_ == "main" then
+		fs_data = eval_formspec_main(meta, fs_data, fields, readonly)
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+	elseif fields._type_ == "label" then
+		fs_data = eval_formspec_label(meta, fs_data, fields, readonly)
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+	elseif fields._type_ == "cond" then
+		fs_data = eval_formspec_cond(meta, fs_data, fields, readonly)
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+	elseif fields._type_ == "oprnd" then
+		fs_data = eval_formspec_oprnd(meta, fs_data, fields, readonly)
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+	elseif fields._type_ == "actn" then
+		fs_data = eval_formspec_actn(meta, fs_data, fields, readonly)
+		meta:set_string("fs_data", minetest.serialize(fs_data))
+	elseif fields._type_ == "help" then
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
+	elseif fields._type_ == "state" then
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
+	end
+	-- FOURTH: back to main menu
+	if fields._exit_ then
+		meta:set_string("formspec", formspec_main(state, fs_data, sOUTPUT))
+--			stop_controller(pos, fs_data)
+--			meta:set_string("fs_data", minetest.serialize(fs_data))
+--		end
 	end
 end
 
