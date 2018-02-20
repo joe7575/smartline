@@ -201,7 +201,7 @@ minetest.register_node("smartline:playerdetector_active", {
 minetest.register_craft({
 	output = "smartline:playerdetector",
 	recipe = {
-		{"", "", ""},
+		{"", "default:copper_ingot", ""},
 		{"dye:blue", "default:copper_ingot", "tubelib:wlanchip"},
 		{"", "", ""},
 	},
