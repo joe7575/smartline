@@ -372,7 +372,7 @@ smartline.register_action("display1", {
 		tubelib.send_message(data.number, data.owner, nil, "text", data.text)
 	end,
 	button_label = function(data) 
-		return "dispay("..data.number..")"
+		return "display("..data.number..")"
 	end,
 })
 
@@ -409,7 +409,7 @@ smartline.register_action("display2", {
 		tubelib.send_message(data.number, data.owner, nil, "row", payload)
 	end,
 	button_label = function(data) 
-		return "dispay("..data.number..")"
+		return "display("..data.number..")"
 	end,
 })
 
@@ -439,7 +439,7 @@ smartline.register_action("display3", {
 		tubelib.send_message(data.number, data.owner, nil, "text", text)
 	end,
 	button_label = function(data) 
-		return "dispay(<name>)"
+		return "display(<name>)"
 	end,
 })
 
@@ -457,7 +457,7 @@ smartline.register_action("display4", {
 		tubelib.send_message(data.number, data.owner, nil, "clear", "")
 	end,
 	button_label = function(data) 
-		return "dispay(<name>)"
+		return "Clear screen"
 	end,
 })
 
